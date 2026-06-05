@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, UnauthorizedException, Inject } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -9,6 +9,8 @@ import { UserEntity } from '../../domain/entities/user.entity';
 import { RegisterDto } from '../dtos/register.dto';
 import { LoginDto } from '../dtos/login.dto';
 import { AuthResponseDto, TokensResponseDto, UserResponseDto } from '../dtos/auth-response.dto';
+import { MailService } from '../../../../mail/mail.service';
+
 
 const FAKE_HASH = '$' + '2b';
 
@@ -18,7 +20,10 @@ export class AuthService {
     @Inject(AUTH_REPOSITORY) private readonly authRepo: IAuthRepository,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly mailService: MailService, // ← ajout
   ) {}
+
+  // ─── existants inchangés ───────────────────────────────────────────
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
     const exists = await this.authRepo.findByEmail(dto.email);
@@ -74,6 +79,37 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('Utilisateur introuvable');
     return this.toDto(user);
   }
+
+  // ─── nouveaux ──────────────────────────────────────────────────────
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const user = await this.authRepo.findByEmail(email);
+      console.log('User trouvé:', user);      // ← log 2
+
+    if (!user) throw new NotFoundException('Email introuvable');
+
+    const token   = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 3600000); // 1h
+
+    await this.authRepo.saveResetToken(user.id, token, expires); // ← voir étape 2
+
+    await this.mailService.sendResetEmail(email, token);
+
+    return { message: 'Email de réinitialisation envoyé' };
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const user = await this.authRepo.findByResetToken(token); // ← voir étape 2
+    if (!user) throw new BadRequestException('Token invalide ou expiré');
+
+    const hashed = await bcrypt.hash(newPassword, 12);
+
+    await this.authRepo.updatePasswordAndClearToken(user.id, hashed); // ← voir étape 2
+
+    return { message: 'Mot de passe réinitialisé avec succès' };
+  }
+
+  // ─── privés inchangés ──────────────────────────────────────────────
 
   private async issueTokens(user: UserEntity): Promise<TokensResponseDto> {
     const payload = { sub: user.id, email: user.email, role: user.role };

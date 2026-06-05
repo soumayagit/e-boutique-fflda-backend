@@ -1,9 +1,11 @@
+// src/modules/auth/domain/entities/user.entity.ts
+
 export enum Role {
   SUPER_ADMIN = 'SUPER_ADMIN',
-  ADMIN = 'ADMIN',
-  MANAGER = 'MANAGER',
-  SUPPORT = 'SUPPORT',
-  CUSTOMER = 'CUSTOMER',
+  ADMIN       = 'ADMIN',
+  MANAGER     = 'MANAGER',
+  SUPPORT     = 'SUPPORT',
+  CUSTOMER    = 'CUSTOMER',
 }
 
 export class UserEntity {
@@ -18,6 +20,10 @@ export class UserEntity {
   emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
+
+  get fullName(): string {
+    return `${this.firstName} ${this.lastName}`;
+  }
 
   isAdmin(): boolean {
     return [Role.SUPER_ADMIN, Role.ADMIN].includes(this.role);

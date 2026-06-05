@@ -4,7 +4,14 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/infrastructure/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/infrastructure/guards/roles.guard';
+import { UsersModule } from './modules/users/users.module';
 
+@Module({
+  imports: [
+    AuthModule,
+    UsersModule, 
+  ],
+})
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),

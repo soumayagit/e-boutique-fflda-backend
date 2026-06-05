@@ -1,3 +1,4 @@
+// src/modules/auth/presentation/auth.controller.ts
 import { Controller, Post, Get, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import type { CurrentUserPayload } from '../infrastructure/decorators/current-user.decorator';
@@ -5,6 +6,8 @@ import { AuthService } from '../application/use-cases/auth.service';
 import { RegisterDto } from '../application/dtos/register.dto';
 import { LoginDto } from '../application/dtos/login.dto';
 import { RefreshTokenDto } from '../application/dtos/refresh-token.dto';
+import { ForgotPasswordDto } from '../application/dtos/forgot-password.dto';
+import { ResetPasswordDto } from '../application/dtos/reset-password.dto';
 import { AuthResponseDto, TokensResponseDto, UserResponseDto } from '../application/dtos/auth-response.dto';
 import { JwtAuthGuard } from '../infrastructure/guards/jwt-auth.guard';
 import { Public } from '../infrastructure/decorators/public.decorator';
@@ -65,5 +68,23 @@ export class AuthController {
   @ApiResponse({ status: 200, type: UserResponseDto })
   getProfile(@CurrentUser() user: CurrentUserPayload): Promise<UserResponseDto> {
     return this.authService.getProfile(user.id);
+  }
+
+  // ── FORGOT PASSWORD ──────────────────────────────────────────────────────
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Envoyer email réinitialisation' })
+  forgotPassword(@Body() dto: ForgotPasswordDto): Promise<{ message: string }> {
+    return this.authService.forgotPassword(dto.email);
+  }
+
+  // ── RESET PASSWORD ───────────────────────────────────────────────────────
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Réinitialiser le mot de passe' })
+  resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
+    return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 }

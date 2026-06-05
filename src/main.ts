@@ -20,7 +20,7 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('FFLDA API')
-    .setDescription('Plateforme e-commerce FFLDA')
+    .setDescription('Plateforme e-boutique FFLDA')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

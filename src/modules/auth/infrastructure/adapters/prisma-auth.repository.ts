@@ -1,3 +1,4 @@
+// src/modules/auth/infrastructure/adapters/prisma-auth.repository.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import type { IAuthRepository, CreateUserInput } from '../../domain/ports/auth.repository';
@@ -20,11 +21,11 @@ export class PrismaAuthRepository implements IAuthRepository {
   async create(input: CreateUserInput): Promise<UserEntity> {
     const user = await this.prisma.user.create({
       data: {
-        email: input.email,
+        email:        input.email,
         passwordHash: input.passwordHash,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        phone: input.phone,
+        firstName:    input.firstName,
+        lastName:     input.lastName,
+        phone:        input.phone,
       },
     });
     return this.toEntity(user);
@@ -36,7 +37,7 @@ export class PrismaAuthRepository implements IAuthRepository {
 
   async findRefreshToken(tokenHash: string): Promise<{ userId: string; isRevoked: boolean; expiresAt: Date } | null> {
     return this.prisma.refreshToken.findFirst({
-      where: { tokenHash },
+      where:  { tokenHash },
       select: { userId: true, isRevoked: true, expiresAt: true },
     });
   }
@@ -44,19 +45,54 @@ export class PrismaAuthRepository implements IAuthRepository {
   async revokeRefreshToken(tokenHash: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
       where: { tokenHash },
-      data: { isRevoked: true },
+      data:  { isRevoked: true },
     });
   }
 
   async revokeAllUserTokens(userId: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
       where: { userId, isRevoked: false },
-      data: { isRevoked: true },
+      data:  { isRevoked: true },
     });
   }
 
+  // ── RESET PASSWORD ──────────────────────────────────────────────────────
+
+  async saveResetToken(userId: string, token: string, expires: Date): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data:  {
+        resetToken:       token,
+        resetTokenExpiry: expires,
+      },
+    });
+  }
+
+  async findByResetToken(token: string): Promise<UserEntity | null> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        resetToken:       token,
+        resetTokenExpiry: { gt: new Date() }, // ← token non expiré
+      },
+    });
+    return user ? this.toEntity(user) : null;
+  }
+
+  async updatePasswordAndClearToken(userId: string, hashedPassword: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data:  {
+        passwordHash:     hashedPassword,
+        resetToken:       null,
+        resetTokenExpiry: null,
+      },
+    });
+  }
+
+  // ── PRIVATE ─────────────────────────────────────────────────────────────
+
   private toEntity(raw: any): UserEntity {
-    const e = new UserEntity();
+    const e         = new UserEntity();
     e.id            = raw.id;
     e.email         = raw.email;
     e.passwordHash  = raw.passwordHash;
