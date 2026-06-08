@@ -1,4 +1,3 @@
-// src/modules/auth/infrastructure/adapters/prisma-auth.repository.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import type { IAuthRepository, CreateUserInput } from '../../domain/ports/auth.repository';
@@ -56,8 +55,6 @@ export class PrismaAuthRepository implements IAuthRepository {
     });
   }
 
-  // ── RESET PASSWORD ──────────────────────────────────────────────────────
-
   async saveResetToken(userId: string, token: string, expires: Date): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
@@ -72,7 +69,7 @@ export class PrismaAuthRepository implements IAuthRepository {
     const user = await this.prisma.user.findFirst({
       where: {
         resetToken:       token,
-        resetTokenExpiry: { gt: new Date() }, // ← token non expiré
+        resetTokenExpiry: { gt: new Date() },
       },
     });
     return user ? this.toEntity(user) : null;
@@ -88,8 +85,6 @@ export class PrismaAuthRepository implements IAuthRepository {
       },
     });
   }
-
-  // ── PRIVATE ─────────────────────────────────────────────────────────────
 
   private toEntity(raw: any): UserEntity {
     const e         = new UserEntity();

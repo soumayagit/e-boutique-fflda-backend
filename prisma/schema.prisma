@@ -16,20 +16,20 @@ enum Role {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  passwordHash  String         @map("password_hash")
-  firstName     String         @map("first_name")
-  lastName      String         @map("last_name")
-  phone         String?
-  role          Role           @default(CUSTOMER)
-  isActive      Boolean        @default(true) @map("is_active")
-  emailVerified Boolean        @default(false) @map("email_verified")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  resetToken        String?  
-  resetTokenExpiry  DateTime? 
-  refreshTokens RefreshToken[]
+  id               String         @id @default(uuid())
+  email            String         @unique
+  passwordHash     String         @map("password_hash")
+  firstName        String         @map("first_name")
+  lastName         String         @map("last_name")
+  phone            String?
+  role             Role           @default(CUSTOMER)
+  isActive         Boolean        @default(true) @map("is_active")
+  emailVerified    Boolean        @default(false) @map("email_verified")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  refreshTokens    RefreshToken[]
 
   @@map("users")
 }
@@ -46,4 +46,33 @@ model RefreshToken {
   @@index([userId])
   @@index([tokenHash])
   @@map("refresh_tokens")
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  imageUrl    String?   @map("image_url")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  products    Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  stock       Int      @default(0)
+  imageUrl    String?  @map("image_url")
+  isActive    Boolean  @default(true) @map("is_active")
+  categoryId  String   @map("category_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  @@map("products")
 }

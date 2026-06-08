@@ -9,7 +9,7 @@ import { UpdatePasswordDto } from '../application/dtos/update-password.dto';
 @ApiTags('Users')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('api/v1/users')
+@Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
