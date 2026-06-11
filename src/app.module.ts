@@ -6,6 +6,7 @@ import { JwtAuthGuard } from './modules/auth/infrastructure/guards/jwt-auth.guar
 import { RolesGuard } from './modules/auth/infrastructure/guards/roles.guard';
 import { UsersModule } from './modules/users/users.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { CatalogModule } from './modules/catalog/catalog.module';
     AuthModule,
     UsersModule,
     CatalogModule,
+     ReviewsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
