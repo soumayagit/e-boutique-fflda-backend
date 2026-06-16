@@ -1,39 +1,35 @@
-import { IsEmail, IsString, MinLength, MaxLength, IsOptional, Matches } from 'class-validator';
-import { Transform } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsString, Matches, MinLength } from 'class-validator';
 
 export class RegisterDto {
-  @ApiProperty({ example: 'soumaya@fflda.com' })
-  @IsEmail({}, { message: 'Email invalide' })
-  @Transform(({ value }) => value?.toLowerCase().trim())
-  email: string;
-
-  @ApiProperty({ example: 'Azerty123!' })
+  @ApiProperty({ example: 'Jean' })
   @IsString()
-  @MinLength(8, { message: 'Minimum 8 caracteres' })
-  @MaxLength(64)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/, {
-    message: 'Le mot de passe doit contenir majuscule, minuscule, chiffre et caractere special',
-  })
-  password: string;
-
-  @ApiProperty({ example: 'Soumaya' })
-  @IsString()
-  @MinLength(2)
-  @MaxLength(50)
-  @Transform(({ value }) => value?.trim())
   firstName: string;
 
-  @ApiProperty({ example: 'FFLDA' })
+  @ApiProperty({ example: 'Dupont' })
   @IsString()
-  @MinLength(2)
-  @MaxLength(50)
-  @Transform(({ value }) => value?.trim())
   lastName: string;
 
-  @ApiPropertyOptional({ example: '+21655000000' })
-  @IsOptional()
+  @ApiProperty({ example: 'jean.dupont@email.com' })
+  @IsEmail({}, { message: 'Email invalide' })
+  email: string;
+
+  @ApiProperty({ example: '+33612345678', required: false })
   @IsString()
-  @Matches(/^\+?[0-9]{8,15}$/, { message: 'Numero de telephone invalide' })
   phone?: string;
+
+  @ApiProperty({
+    example: 'MotDePasse1!',
+    description:
+      'Minimum 8 caractères, avec majuscule, minuscule, chiffre et caractère spécial',
+  })
+  @IsString()
+  @MinLength(8, { message: 'Minimum 8 caractères' })
+  @Matches(/(?=.*[A-Z])/, { message: 'Au moins une majuscule' })
+  @Matches(/(?=.*[a-z])/, { message: 'Au moins une minuscule' })
+  @Matches(/(?=.*[0-9])/, { message: 'Au moins un chiffre' })
+  @Matches(/(?=.*[!@#$%^&*(),.?":{}|<>])/, {
+    message: 'Au moins un caractère spécial',
+  })
+  password: string;
 }

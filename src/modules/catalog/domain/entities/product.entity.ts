@@ -9,4 +9,5 @@ export class ProductEntity {
   categoryId: string;
   createdAt: Date;
   updatedAt: Date;
+  variants?: any[]
 }

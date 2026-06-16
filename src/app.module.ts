@@ -7,14 +7,20 @@ import { RolesGuard } from './modules/auth/infrastructure/guards/roles.guard';
 import { UsersModule } from './modules/users/users.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
+import { CartModule } from './modules/cart/cart.module';
+import { PrismaModule } from '../prisma/prisma.module'; // ← ajouter
+import { OrdersModule } from './modules/orders/orders.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule, // ← ajouter en premier
     AuthModule,
     UsersModule,
     CatalogModule,
-     ReviewsModule,
+    ReviewsModule,
+    CartModule,
+    OrdersModule, 
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
