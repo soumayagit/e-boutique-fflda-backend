@@ -129,12 +129,12 @@ model Cart {
   userId    String     @unique @map("user_id")
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
+  expiresAt DateTime   @default(dbgenerated("NOW() + INTERVAL '1 month'")) @map("expires_at") // ← ajouter
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   items     CartItem[]
 
   @@map("carts")
 }
-
 model CartItem {
   id        String          @id @default(uuid())
   cartId    String          @map("cart_id")
