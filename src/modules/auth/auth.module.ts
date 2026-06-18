@@ -3,7 +3,8 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MailModule } from '../../mail/mail.module';
+import { MailModule } from '../mail/mail.module';
+
 import { PrismaService }        from '../../prisma/prisma.service';
 import { AuthController }       from './presentation/auth.controller';
 import { AuthService }          from './application/use-cases/auth.service';

@@ -9,8 +9,7 @@ import { UserEntity } from '../../domain/entities/user.entity';
 import { RegisterDto } from '../dtos/register.dto';
 import { LoginDto } from '../dtos/login.dto';
 import { AuthResponseDto, TokensResponseDto, UserResponseDto } from '../dtos/auth-response.dto';
-import { MailService } from '../../../../mail/mail.service';
-
+import { MailService } from '../../../mail/mail.service';
 
 const FAKE_HASH = '$' + '2b';
 
