@@ -8,19 +8,21 @@ import { UsersModule } from './modules/users/users.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { CartModule } from './modules/cart/cart.module';
-import { PrismaModule } from '../prisma/prisma.module'; // ← ajouter
+import { PrismaModule } from '../prisma/prisma.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { MailModule } from './modules/mail/mail.module'; // ← ajouter
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    PrismaModule, // ← ajouter en premier
+    PrismaModule,
     AuthModule,
     UsersModule,
     CatalogModule,
     ReviewsModule,
     CartModule,
-    OrdersModule, 
+    OrdersModule,
+    MailModule, // ← ajouter
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
