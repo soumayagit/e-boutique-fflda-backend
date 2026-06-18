@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../../../../prisma/prisma.service';
 import { AddCartItemDto, UpdateCartItemDto } from '../dto/cart.dto';
 
+const ONE_MONTH = 30 * 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class CartService {
   constructor(private readonly prisma: PrismaService) {}
@@ -29,7 +31,10 @@ export class CartService {
 
     if (!cart) {
       cart = await this.prisma.cart.create({
-        data: { userId },
+        data: {
+          userId,
+          expiresAt: new Date(Date.now() + ONE_MONTH),
+        },
         include: {
           items: {
             include: {
@@ -46,6 +51,16 @@ export class CartService {
           },
         },
       });
+    }
+
+    // Si expiré → vider les articles et renouveler l'expiration
+    if (cart.expiresAt < new Date()) {
+      await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+      await this.prisma.cart.update({
+        where: { id: cart.id },
+        data:  { expiresAt: new Date(Date.now() + ONE_MONTH) },
+      });
+      cart.items = [];
     }
 
     return this.formatCart(cart);
@@ -75,7 +90,18 @@ export class CartService {
 
     let cart = await this.prisma.cart.findUnique({ where: { userId } });
     if (!cart) {
-      cart = await this.prisma.cart.create({ data: { userId } });
+      cart = await this.prisma.cart.create({
+        data: {
+          userId,
+          expiresAt: new Date(Date.now() + ONE_MONTH),
+        },
+      });
+    } else {
+      // Renouveler l'expiration à chaque ajout
+      await this.prisma.cart.update({
+        where: { id: cart.id },
+        data:  { expiresAt: new Date(Date.now() + ONE_MONTH) },
+      });
     }
 
     const existingItem = await this.prisma.cartItem.findFirst({
