@@ -11,6 +11,7 @@ import { CartModule } from './modules/cart/cart.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { MailModule } from './modules/mail/mail.module'; // ← ajouter
+import { PaymentModule } from './modules/payment/payment.module';
 
 @Module({
   imports: [
@@ -22,7 +23,8 @@ import { MailModule } from './modules/mail/mail.module'; // ← ajouter
     ReviewsModule,
     CartModule,
     OrdersModule,
-    MailModule, // ← ajouter
+    MailModule,
+    PaymentModule, // ← ajouter
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

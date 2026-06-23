@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../../../../prisma/prisma.service';
 import { CreateOrderDto } from '../dto/order.dto';
 import { MailService } from '../../../mail/mail.service';
-
+import { PaymentMethod, PaymentStatus } from '@prisma/client';
 @Injectable()
 export class OrderService {
   constructor(
@@ -10,8 +10,8 @@ export class OrderService {
     private readonly mailService: MailService,
   ) {}
 
-  private readonly TVA_RATE     = 0.20;
-  private readonly SHIPPING_HT  = 4.08;
+  private readonly TVA_RATE    = 0.20;
+  private readonly SHIPPING_HT = 4.08;
 
   async createOrder(userId: string, dto: CreateOrderDto) {
     const cart = await this.prisma.cart.findUnique({
@@ -50,17 +50,23 @@ export class OrderService {
     const shippingCost = Math.round((this.SHIPPING_HT + shippingTVA) * 100) / 100;
     const total        = Math.round((subtotal + shippingCost) * 100) / 100;
 
+    // ── Détermine le statut de paiement selon la méthode ──
+   const paymentMethod = (dto.paymentMethod ?? 'card') as PaymentMethod;
+   const paymentStatus = this._getPaymentStatus(dto.paymentMethod ?? 'card');
+
     const order = await this.prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
         data: {
           userId,
-          firstName:   dto.firstName,
-          lastName:    dto.lastName,
-          address:     dto.address,
-          city:        dto.city,
-          postalCode:  dto.postalCode,
-          phone:       dto.phone,
-          notes:       dto.notes,
+          firstName:     dto.firstName,
+          lastName:      dto.lastName,
+          address:       dto.address,
+          city:          dto.city,
+          postalCode:    dto.postalCode,
+          phone:         dto.phone,
+          notes:         dto.notes,
+          paymentMethod, 
+          paymentStatus, 
           total,
           shippingCost,
           items: {
@@ -99,16 +105,16 @@ export class OrderService {
     const formatted = this.formatOrder(order);
 
     const user = await this.prisma.user.findUnique({
-      where: { id: userId },
+      where:  { id: userId },
       select: { email: true },
     });
 
     if (user?.email) {
       await this.mailService.sendOrderConfirmation(
         user.email,
-        dto.firstName,
+        dto.firstName ?? 'Client',
         order.id,
-        formatted.items.map(i => ({
+        formatted.items.map((i) => ({
           name:     i.productName,
           quantity: i.quantity,
           price:    i.price,
@@ -119,6 +125,16 @@ export class OrderService {
 
     return formatted;
   }
+
+  // ── Détermine le statut selon la méthode de paiement ──
+  private _getPaymentStatus(paymentMethod: string): PaymentStatus {
+  switch (paymentMethod) {
+    case 'cod':    return PaymentStatus.PENDING;
+    case 'paypal': return PaymentStatus.SIMULATED;
+    case 'card':   return PaymentStatus.SIMULATED;
+    default:       return PaymentStatus.SIMULATED;
+  }
+}
 
   async getUserOrders(userId: string) {
     const orders = await this.prisma.order.findMany({
@@ -158,6 +174,16 @@ export class OrderService {
     return this.formatOrder(order);
   }
 
+  // ── Nouveau : mettre à jour le statut de paiement ──
+  async updatePaymentStatus(orderId: string, paymentStatus: string) {
+    const order = await this.prisma.order.update({
+      where:   { id: orderId },
+      data:    { paymentStatus: paymentStatus as any },
+      include: { items: true },
+    });
+    return this.formatOrder(order);
+  }
+
   async deleteOrder(orderId: string): Promise<void> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -167,10 +193,10 @@ export class OrderService {
   }
 
   private formatOrder(order: any) {
-    const tva         = this.TVA_RATE;
-    const total       = Number(order.total);
-    const shipping    = Number(order.shippingCost);
-    const subtotal    = Math.round((total - shipping) * 100) / 100;
+    const tva      = this.TVA_RATE;
+    const total    = Number(order.total);
+    const shipping = Number(order.shippingCost);
+    const subtotal = Math.round((total - shipping) * 100) / 100;
 
     const subtotalHT  = Math.round((subtotal / (1 + tva)) * 100) / 100;
     const subtotalTVA = Math.round((subtotal - subtotalHT) * 100) / 100;
@@ -182,7 +208,8 @@ export class OrderService {
     return {
       id:            order.id,
       status:        order.status,
-      paymentStatus: order.paymentStatus,
+      paymentMethod: order.paymentMethod ?? 'card',  // ← ajout
+      paymentStatus: order.paymentStatus ?? 'SIMULATED', // ← ajout
       total,
       subtotal,
       shippingCost:  shipping,

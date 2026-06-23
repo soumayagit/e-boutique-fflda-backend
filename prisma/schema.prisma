@@ -25,9 +25,16 @@ enum OrderStatus {
 
 enum PaymentStatus {
   PENDING
+  SIMULATED
   PAID
   FAILED
   REFUNDED
+}
+
+enum PaymentMethod {
+  card
+  paypal
+  cod
 }
 
 model User {
@@ -129,12 +136,13 @@ model Cart {
   userId    String     @unique @map("user_id")
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
-  expiresAt DateTime   @default(dbgenerated("NOW() + INTERVAL '1 month'")) @map("expires_at") // ← ajouter
+  expiresAt DateTime   @default(dbgenerated("NOW() + INTERVAL '1 month'")) @map("expires_at")
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   items     CartItem[]
 
   @@map("carts")
 }
+
 model CartItem {
   id        String          @id @default(uuid())
   cartId    String          @map("cart_id")
@@ -154,14 +162,15 @@ model Order {
   id            String        @id @default(uuid())
   userId        String        @map("user_id")
   status        OrderStatus   @default(PENDING)
-  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+  paymentStatus PaymentStatus @default(SIMULATED) @map("payment_status")
+  paymentMethod PaymentMethod @default(card) @map("payment_method")
   total         Decimal       @db.Decimal(10, 2)
   shippingCost  Decimal       @default(4.90) @db.Decimal(10, 2) @map("shipping_cost")
-  firstName     String        @map("first_name")
-  lastName      String        @map("last_name")
-  address       String
-  city          String
-  postalCode    String        @map("postal_code")
+  firstName     String?       @map("first_name")
+  lastName      String?       @map("last_name")
+  address       String?
+  city          String?
+  postalCode    String?       @map("postal_code")
   phone         String?
   notes         String?
   createdAt     DateTime      @default(now()) @map("created_at")
