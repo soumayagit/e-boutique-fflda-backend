@@ -73,4 +73,13 @@ export class PaymentController {
   async capturePaypalOrder(@Param('orderId') orderId: string) {
     return this.paymentService.capturePaypalOrder(orderId);
   }
+  @Public()
+@Post('create-checkout-session')
+async createCheckoutSession(@Body() dto: CreatePaymentIntentDto) {
+  return this.stripeService.createCheckoutSession(
+    dto.amount,
+    dto.orderId,
+    dto.currency,
+  );
+}
 }

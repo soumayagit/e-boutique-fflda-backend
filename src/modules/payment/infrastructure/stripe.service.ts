@@ -34,4 +34,29 @@ export class StripeService {
       this.configService.get<string>('STRIPE_WEBHOOK_SECRET')!,
     );
   }
+async createCheckoutSession(amount: number, orderId: string, currency: string = 'eur') {
+  const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:60888';
+  
+  const session = await this.stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        price_data: {
+          currency,
+          product_data: {
+            name: `Commande FFLDA #${orderId}`,
+          },
+          unit_amount: Math.round(amount * 100),
+        },
+        quantity: 1,
+      },
+    ],
+    mode: 'payment',
+    success_url: `${frontendUrl}/#/payment-success`,
+    cancel_url:  `${frontendUrl}/#/payment-cancel`,
+    metadata: { orderId },
+  });
+
+  return { url: session.url };
+}
 }
