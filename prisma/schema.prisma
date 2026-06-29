@@ -55,6 +55,8 @@ model User {
   reviews          Review[]
   cart             Cart?
   orders           Order[]
+    wishlistItems WishlistItem[] 
+
 
   @@map("users")
 }
@@ -71,6 +73,17 @@ model RefreshToken {
   @@index([userId])
   @@index([tokenHash])
   @@map("refresh_tokens")
+}
+model WishlistItem {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("wishlist_items")
 }
 
 model Category {
@@ -101,6 +114,8 @@ model Product {
   reviews     Review[]
   variants    ProductVariant[]
   cartItems   CartItem[]
+    wishlistItems WishlistItem[] 
+
 
   @@map("products")
 }
