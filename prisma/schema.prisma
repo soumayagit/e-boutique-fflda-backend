@@ -108,6 +108,9 @@ model Product {
   imageUrl    String?          @map("image_url")
   isActive    Boolean          @default(true) @map("is_active")
   categoryId  String           @map("category_id")
+   largeur     Float?           
+  longueur    Float?           
+  epaisseur   Float?           
   createdAt   DateTime         @default(now()) @map("created_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
   category    Category         @relation(fields: [categoryId], references: [id])
@@ -188,10 +191,13 @@ model Order {
   postalCode    String?       @map("postal_code")
   phone         String?
   notes         String?
+  promoCodeId    String?   @map("promo_code_id")        // ← ajout
+  discountAmount Decimal?  @default(0) @db.Decimal(10, 2) @map("discount_amount") // ← ajout
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
   user          User          @relation(fields: [userId], references: [id])
   items         OrderItem[]
+  promoCode     PromoCode?    @relation(fields: [promoCodeId], references: [id]) // ← ajout
 
   @@map("orders")
 }
@@ -210,4 +216,25 @@ model OrderItem {
   order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("order_items")
+}
+model PromoCode {
+  id           String    @id @default(uuid())
+  code         String    @unique
+  discountType DiscountType @default(PERCENTAGE)
+  discountValue Float
+  minOrderAmount Float?  @default(0)
+  maxUses      Int?
+  usedCount    Int       @default(0)
+  isActive     Boolean   @default(true)
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  orders       Order[]
+
+  @@map("promo_codes")
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
 }

@@ -109,21 +109,26 @@ export class OrderService {
       select: { email: true },
     });
 
-    if (user?.email) {
-      await this.mailService.sendOrderConfirmation(
-        user.email,
-        dto.firstName ?? 'Client',
-        order.id,
-        formatted.items.map((i) => ({
-          name:     i.productName,
-          quantity: i.quantity,
-          price:    i.price,
-        })),
-        formatted.total,
-      );
-    }
+ if (user?.email && paymentMethod === 'cod') {
+  try {
+    await this.mailService.sendOrderConfirmation(
+      user.email,
+      dto.firstName ?? 'Client',
+      order.id,
+      formatted.items.map((i) => ({
+        name:     i.productName,
+        quantity: i.quantity,
+        price:    i.price,
+      })),
+      formatted.total,
+    );
+  } catch (mailError) {
+    console.warn('Email non envoyé:', mailError.message);
+  }
+}
 
-    return formatted;
+return formatted;
+
   }
 
   // ── Détermine le statut selon la méthode de paiement ──
@@ -144,6 +149,46 @@ export class OrderService {
     });
     return orders.map((o) => this.formatOrder(o));
   }
+  // ── Confirme le paiement et envoie l'email (Stripe/PayPal) ──
+async confirmPaymentAndNotify(orderId: string) {
+  const order = await this.prisma.order.findUnique({
+    where:   { id: orderId },
+    include: { items: true, user: true },
+  });
+
+  if (!order) {
+    console.warn(`⚠️ Commande ${orderId} introuvable pour confirmation paiement`);
+    return;
+  }
+
+  // Met à jour le statut de paiement
+  await this.prisma.order.update({
+    where: { id: orderId },
+    data:  { paymentStatus: 'PAID' as any },
+  });
+
+  const formatted = this.formatOrder(order);
+  const email     = order.user?.email;
+
+  if (email) {
+    try {
+      await this.mailService.sendOrderConfirmation(
+        email,
+        order.firstName ?? 'Client',
+        order.id,
+        formatted.items.map((i) => ({
+          name:     i.productName,
+          quantity: i.quantity,
+          price:    i.price,
+        })),
+        formatted.total,
+      );
+      console.log(`✅ Email confirmation envoyé pour commande ${orderId}`);
+    } catch (mailError) {
+      console.warn('⚠️ Email non envoyé:', mailError.message);
+    }
+  }
+}
 
   async getOrderById(userId: string, orderId: string) {
     const order = await this.prisma.order.findFirst({
@@ -165,14 +210,49 @@ export class OrderService {
     return orders.map((o) => this.formatOrder(o));
   }
 
-  async updateStatus(orderId: string, status: string) {
-    const order = await this.prisma.order.update({
-      where:   { id: orderId },
-      data:    { status: status as any },
-      include: { items: true },
-    });
-    return this.formatOrder(order);
+async updateStatus(orderId: string, status: string) {
+  const order = await this.prisma.order.update({
+    where:   { id: orderId },
+    data:    { status: status as any },
+    include: { items: true, user: true },
+  });
+
+  // ── Envoie email selon statut ──
+  const email     = (order as any).user?.email;
+  const firstName = order.firstName ?? 'Client';
+
+  if (email) {
+    try {
+      switch (status) {
+        case 'CONFIRMED':
+          await this.mailService.sendOrderStatusConfirmed(
+            email, firstName, order.id
+          );
+          break;
+        case 'SHIPPED':
+          await this.mailService.sendOrderShipped(
+            email, firstName, order.id
+          );
+          break;
+        case 'DELIVERED':
+          await this.mailService.sendOrderDelivered(
+            email, firstName, order.id
+          );
+          break;
+        case 'CANCELLED':
+          await this.mailService.sendOrderCancelled(
+            email, firstName, order.id
+          );
+          break;
+      }
+      console.log(`✅ Email statut ${status} envoyé à ${email}`);
+    } catch (mailError) {
+      console.warn('⚠️ Email non envoyé:', mailError.message);
+    }
   }
+
+  return this.formatOrder(order);
+}
 
   // ── Nouveau : mettre à jour le statut de paiement ──
   async updatePaymentStatus(orderId: string, paymentStatus: string) {

@@ -7,9 +7,9 @@ import { CreatePaymentIntentUseCase } from './application/use-cases/create-payme
 import { PaypalService } from './infrastructure/paypal.service';
 import { CreatePaypalOrderUseCase } from './application/use-cases/create-paypal-order.use-case';
 import { CapturePaypalOrderUseCase } from './application/use-cases/capture-paypal-order.use-case';
-
+import { OrdersModule } from '../orders/orders.module';
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, OrdersModule],
   controllers: [PaymentController],
   providers: [
     PaymentService,

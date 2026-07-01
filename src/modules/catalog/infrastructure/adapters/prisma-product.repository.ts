@@ -95,23 +95,26 @@ export class PrismaProductRepository implements IProductRepository {
     return product ? this.toEntity(product) : null;
   }
 
-  async create(input: CreateProductInput): Promise<ProductEntity> {
-    const product = await this.prisma.product.create({
-      data: {
-        name:        input.name,
-        description: input.description,
-        price:       input.price,
-        stock:       input.stock,
-        imageUrl:    input.imageUrl,
-        categoryId:  input.categoryId,
-      },
-      include: {
-        category: true,
-        variants: true,
-      },
-    });
-    return this.toEntity(product);
-  }
+async create(input: CreateProductInput): Promise<ProductEntity> {
+  const product = await this.prisma.product.create({
+    data: {
+      name:        input.name,
+      description: input.description,
+      price:       input.price,
+      stock:       input.stock,
+      imageUrl:    input.imageUrl,
+      categoryId:  input.categoryId,
+      largeur:     input.largeur  ?? null, // ← ajout
+      longueur:    input.longueur ?? null, // ← ajout
+      epaisseur:   input.epaisseur ?? null, // ← ajout
+    },
+    include: {
+      category: true,
+      variants: true,
+    },
+  });
+  return this.toEntity(product);
+}
 
   async update(id: string, input: UpdateProductInput): Promise<ProductEntity> {
     const product = await this.prisma.product.update({
@@ -167,19 +170,22 @@ export class PrismaProductRepository implements IProductRepository {
 
   // ── Mapper ────────────────────────────────────────────────────────────────────
 
-  private toEntity(raw: any): ProductEntity {
-    const e       = new ProductEntity();
-    e.id          = raw.id;
-    e.name        = raw.name;
-    e.description = raw.description;
-    e.price       = Number(raw.price);
-    e.stock       = raw.stock;
-    e.imageUrl    = raw.imageUrl;
-    e.isActive    = raw.isActive;
-    e.categoryId  = raw.categoryId;
-    e.createdAt   = raw.createdAt;
-    e.updatedAt   = raw.updatedAt;
-    e.variants    = raw.variants ?? [];
-    return e;
-  }
+ private toEntity(raw: any): ProductEntity {
+  const e        = new ProductEntity();
+  e.id           = raw.id;
+  e.name         = raw.name;
+  e.description  = raw.description;
+  e.price        = Number(raw.price);
+  e.stock        = raw.stock;
+  e.imageUrl     = raw.imageUrl;
+  e.isActive     = raw.isActive;
+  e.categoryId   = raw.categoryId;
+  e.createdAt    = raw.createdAt;
+  e.updatedAt    = raw.updatedAt;
+  e.variants     = raw.variants ?? [];
+  e.largeur      = raw.largeur  ?? null; // ← ajout
+  e.longueur     = raw.longueur ?? null; // ← ajout
+  e.epaisseur    = raw.epaisseur ?? null; // ← ajout
+  return e;
+}
 }

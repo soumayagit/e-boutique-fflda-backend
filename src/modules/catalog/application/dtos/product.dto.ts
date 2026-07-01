@@ -29,6 +29,22 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  // ── Dimensions tapis ──────────────────────────────────────────────────────
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  largeur?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  longueur?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  epaisseur?: number;
 }
 
 export class UpdateProductDto {
@@ -63,4 +79,20 @@ export class UpdateProductDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  // ── Dimensions tapis ──────────────────────────────────────────────────────
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  largeur?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  longueur?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  epaisseur?: number;
 }

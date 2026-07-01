@@ -7,16 +7,22 @@ export interface CreateProductInput {
   stock: number;
   imageUrl?: string;
   categoryId: string;
+   largeur?:     number | null; 
+  longueur?:    number | null; 
+  epaisseur?:   number | null;
 }
 
 export interface UpdateProductInput {
-  name?: string;
+  name?:        string;
   description?: string;
-  price?: number;
-  stock?: number;
-  imageUrl?: string;
-  isActive?: boolean;
-  categoryId?: string;
+  price?:       number;
+  stock?:       number;
+  imageUrl?:    string;
+  isActive?:    boolean;
+  categoryId?:  string;
+  largeur?:     number | null; 
+  longueur?:    number | null; 
+  epaisseur?:   number | null; 
 }
 
 export interface ProductFilters {

@@ -14,12 +14,16 @@ import { StripeService } from './infrastructure/stripe.service';
 import { CreatePaymentIntentDto } from './application/dto/create-payment-intent.dto';
 import { CreatePaypalOrderDto } from './application/dto/create-paypal-order.dto';
 import { Public } from '../auth/infrastructure/decorators/public.decorator';
+import { ApiTags } from '@nestjs/swagger';
+import { OrderService } from '../orders/application/use-cases/order.service'; // ← ajout
 
+@ApiTags('Payment')
 @Controller('payment')
 export class PaymentController {
   constructor(
     private readonly paymentService: PaymentService,
     private readonly stripeService: StripeService,
+    private readonly orderService: OrderService, // ← ajout
   ) {}
 
   // ── Stripe ────────────────────────────────────────────────────────────────
@@ -47,9 +51,24 @@ export class PaymentController {
     );
 
     switch (event.type) {
-      case 'payment_intent.succeeded':
-        console.log('✅ Paiement Stripe réussi:', event.data.object);
+      case 'checkout.session.completed': {
+        const session = event.data.object as any;
+        const orderId = session.metadata?.orderId;
+        console.log('✅ Checkout Stripe complété:', orderId);
+        if (orderId) {
+          await this.orderService.confirmPaymentAndNotify(orderId);
+        }
         break;
+      }
+      case 'payment_intent.succeeded': {
+        const intent  = event.data.object as any;
+        const orderId = intent.metadata?.orderId;
+        console.log('✅ Paiement Stripe réussi:', orderId);
+        if (orderId) {
+          await this.orderService.confirmPaymentAndNotify(orderId);
+        }
+        break;
+      }
       case 'payment_intent.payment_failed':
         console.log('❌ Paiement Stripe échoué:', event.data.object);
         break;
@@ -71,15 +90,19 @@ export class PaymentController {
   @Public()
   @Post('paypal/capture/:orderId')
   async capturePaypalOrder(@Param('orderId') orderId: string) {
-    return this.paymentService.capturePaypalOrder(orderId);
+    const result = await this.paymentService.capturePaypalOrder(orderId);
+    // ← envoie l'email après capture réussie du paiement
+    await this.orderService.confirmPaymentAndNotify(orderId);
+    return result;
   }
+
   @Public()
-@Post('create-checkout-session')
-async createCheckoutSession(@Body() dto: CreatePaymentIntentDto) {
-  return this.stripeService.createCheckoutSession(
-    dto.amount,
-    dto.orderId,
-    dto.currency,
-  );
-}
+  @Post('create-checkout-session')
+  async createCheckoutSession(@Body() dto: CreatePaymentIntentDto) {
+    return this.stripeService.createCheckoutSession(
+      dto.amount,
+      dto.orderId,
+      dto.currency,
+    );
+  }
 }

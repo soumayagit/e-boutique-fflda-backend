@@ -10,9 +10,10 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
 import { CartModule } from './modules/cart/cart.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { OrdersModule } from './modules/orders/orders.module';
-import { MailModule } from './modules/mail/mail.module'; // ← ajouter
+import { MailModule } from './modules/mail/mail.module';
+import { WishlistModule } from './modules/wishlist/wishlist.module';
+import { PromoModule } from './modules/promo/promo.module'; 
 import { PaymentModule } from './modules/payment/payment.module';
-
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -24,7 +25,9 @@ import { PaymentModule } from './modules/payment/payment.module';
     CartModule,
     OrdersModule,
     MailModule,
-    PaymentModule, // ← ajouter
+    WishlistModule,
+    PaymentModule, 
+    PromoModule, 
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
