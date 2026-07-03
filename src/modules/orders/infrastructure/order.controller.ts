@@ -43,4 +43,15 @@ export class OrderController {
   updateStatus(@Param('id') id: string, @Body('status') status: string) {
     return this.orderService.updateStatus(id, status);
   }
+
+  // ── Admin : valide et chiffre une commande sur-mesure (tapis) ──
+  @Put('admin/:id/validate')
+  @ApiOperation({ summary: 'Admin — valide et chiffre une commande sur-mesure' })
+  validateOrder(
+    @Request()   req:  any,
+    @Param('id') id:   string,
+    @Body()      body: { total?: number },
+  ) {
+    return this.orderService.validateOrder(id, req.user.id, body.total);
+  }
 }

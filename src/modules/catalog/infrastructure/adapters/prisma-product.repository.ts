@@ -170,7 +170,7 @@ async create(input: CreateProductInput): Promise<ProductEntity> {
 
   // ── Mapper ────────────────────────────────────────────────────────────────────
 
- private toEntity(raw: any): ProductEntity {
+private toEntity(raw: any): ProductEntity {
   const e        = new ProductEntity();
   e.id           = raw.id;
   e.name         = raw.name;
@@ -180,12 +180,13 @@ async create(input: CreateProductInput): Promise<ProductEntity> {
   e.imageUrl     = raw.imageUrl;
   e.isActive     = raw.isActive;
   e.categoryId   = raw.categoryId;
+  e.categoryName = raw.category?.name ?? null; // ← ajout
   e.createdAt    = raw.createdAt;
   e.updatedAt    = raw.updatedAt;
   e.variants     = raw.variants ?? [];
-  e.largeur      = raw.largeur  ?? null; // ← ajout
-  e.longueur     = raw.longueur ?? null; // ← ajout
-  e.epaisseur    = raw.epaisseur ?? null; // ← ajout
+  e.largeur      = raw.largeur   ?? null;
+  e.longueur     = raw.longueur  ?? null;
+  e.epaisseur    = raw.epaisseur ?? null;
   return e;
 }
 }

@@ -53,7 +53,6 @@ export class CartService {
       });
     }
 
-    // Si expiré → vider les articles et renouveler l'expiration
     if (cart.expiresAt < new Date()) {
       await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
       await this.prisma.cart.update({
@@ -80,11 +79,13 @@ export class CartService {
       });
       if (!variant) throw new NotFoundException('Taille introuvable');
       if (variant.stock < dto.quantity) {
-        throw new BadRequestException(`Stock insuffisant pour cette taille (${variant.stock} disponibles)`);
+        throw new BadRequestException(
+          `Stock insuffisant pour cette taille (${variant.stock} disponibles)`);
       }
     } else {
       if (product.stock < dto.quantity) {
-        throw new BadRequestException(`Stock insuffisant (${product.stock} disponibles)`);
+        throw new BadRequestException(
+          `Stock insuffisant (${product.stock} disponibles)`);
       }
     }
 
@@ -97,35 +98,54 @@ export class CartService {
         },
       });
     } else {
-      // Renouveler l'expiration à chaque ajout
       await this.prisma.cart.update({
         where: { id: cart.id },
         data:  { expiresAt: new Date(Date.now() + ONE_MONTH) },
       });
     }
 
-    const existingItem = await this.prisma.cartItem.findFirst({
-      where: {
-        cartId:    cart.id,
-        productId: dto.productId,
-        variantId: dto.variantId ?? null,
-      },
-    });
+    // ── US338 : tapis → toujours créer un nouvel item (pas de fusion) ──────
+    const isTapis = dto.longueur != null || dto.largeur != null ||
+                    dto.epaisseur != null || dto.planFileUrl != null;
 
-    if (existingItem) {
-      await this.prisma.cartItem.update({
-        where: { id: existingItem.id },
-        data:  { quantity: existingItem.quantity + dto.quantity },
-      });
-    } else {
+    if (isTapis) {
       await this.prisma.cartItem.create({
         data: {
-          cartId:    cart.id,
-          productId: dto.productId,
-          variantId: dto.variantId,
-          quantity:  dto.quantity,
+          cartId:      cart.id,
+          productId:   dto.productId,
+          variantId:   dto.variantId,
+          quantity:    dto.quantity,
+          longueur:    dto.longueur,
+          largeur:     dto.largeur,
+          epaisseur:   dto.epaisseur,
+          planFileUrl: dto.planFileUrl,
         },
       });
+    } else {
+      // Produit normal → fusion si déjà dans le panier
+      const existingItem = await this.prisma.cartItem.findFirst({
+        where: {
+          cartId:    cart.id,
+          productId: dto.productId,
+          variantId: dto.variantId ?? null,
+        },
+      });
+
+      if (existingItem) {
+        await this.prisma.cartItem.update({
+          where: { id: existingItem.id },
+          data:  { quantity: existingItem.quantity + dto.quantity },
+        });
+      } else {
+        await this.prisma.cartItem.create({
+          data: {
+            cartId:    cart.id,
+            productId: dto.productId,
+            variantId: dto.variantId,
+            quantity:  dto.quantity,
+          },
+        });
+      }
     }
 
     return this.getOrCreateCart(userId);
@@ -185,6 +205,11 @@ export class CartService {
       variant: item.variant
           ? { id: item.variant.id, size: item.variant.size, stock: item.variant.stock }
           : null,
+      // ── US338 dimensions tapis ────────────────────────────────
+      longueur:    item.longueur    ?? null,
+      largeur:     item.largeur     ?? null,
+      epaisseur:   item.epaisseur   ?? null,
+      planFileUrl: item.planFileUrl ?? null,
       subtotal: Number(item.product.price) * item.quantity,
     }));
 
@@ -196,7 +221,9 @@ export class CartService {
       items,
       total:             Math.round(total * 100) / 100,
       shippingCost:      items.length > 0 ? 4.90 : 0,
-      totalWithShipping: items.length > 0 ? Math.round((total + 4.90) * 100) / 100 : 0,
+      totalWithShipping: items.length > 0
+          ? Math.round((total + 4.90) * 100) / 100
+          : 0,
     };
   }
 }

@@ -17,6 +17,8 @@ enum Role {
 
 enum OrderStatus {
   PENDING
+  AWAITING_ADMIN_REVIEW   // commande avec tapis sur-mesure, en attente de validation/chiffrage
+  AWAITING_PAYMENT        // validée par l'admin, le client peut payer
   CONFIRMED
   SHIPPED
   DELIVERED
@@ -37,6 +39,11 @@ enum PaymentMethod {
   cod
 }
 
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
 model User {
   id               String         @id @default(uuid())
   email            String         @unique
@@ -55,8 +62,7 @@ model User {
   reviews          Review[]
   cart             Cart?
   orders           Order[]
-    wishlistItems WishlistItem[] 
-
+  wishlistItems    WishlistItem[]
 
   @@map("users")
 }
@@ -74,6 +80,7 @@ model RefreshToken {
   @@index([tokenHash])
   @@map("refresh_tokens")
 }
+
 model WishlistItem {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
@@ -100,25 +107,24 @@ model Category {
 }
 
 model Product {
-  id          String           @id @default(uuid())
-  name        String
-  description String?
-  price       Decimal          @db.Decimal(10, 2)
-  stock       Int              @default(0)
-  imageUrl    String?          @map("image_url")
-  isActive    Boolean          @default(true) @map("is_active")
-  categoryId  String           @map("category_id")
-   largeur     Float?           
-  longueur    Float?           
-  epaisseur   Float?           
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
-  category    Category         @relation(fields: [categoryId], references: [id])
-  reviews     Review[]
-  variants    ProductVariant[]
-  cartItems   CartItem[]
-    wishlistItems WishlistItem[] 
-
+  id            String           @id @default(uuid())
+  name          String
+  description   String?
+  price         Decimal          @db.Decimal(10, 2)
+  stock         Int              @default(0)
+  imageUrl      String?          @map("image_url")
+  isActive      Boolean          @default(true) @map("is_active")
+  categoryId    String           @map("category_id")
+  largeur       Float?
+  longueur      Float?
+  epaisseur     Float?
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  category      Category         @relation(fields: [categoryId], references: [id])
+  reviews       Review[]
+  variants      ProductVariant[]
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
 
   @@map("products")
 }
@@ -162,42 +168,55 @@ model Cart {
 }
 
 model CartItem {
-  id        String          @id @default(uuid())
-  cartId    String          @map("cart_id")
-  productId String          @map("product_id")
-  variantId String?         @map("variant_id")
-  quantity  Int             @default(1)
-  createdAt DateTime        @default(now()) @map("created_at")
-  updatedAt DateTime        @updatedAt @map("updated_at")
-  cart      Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  id        String   @id @default(uuid())
+  cartId    String   @map("cart_id")
+  productId String   @map("product_id")
+  variantId String?  @map("variant_id")
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // ── US338 Tapis de lutte ──────────────────────────────────────
+  longueur    Float?  @map("longueur")
+  largeur     Float?  @map("largeur")
+  epaisseur   Float?  @map("epaisseur")
+  planFileUrl String? @map("plan_file_url")
+
+  cart    Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@map("cart_items")
 }
 
 model Order {
-  id            String        @id @default(uuid())
-  userId        String        @map("user_id")
-  status        OrderStatus   @default(PENDING)
-  paymentStatus PaymentStatus @default(SIMULATED) @map("payment_status")
-  paymentMethod PaymentMethod @default(card) @map("payment_method")
-  total         Decimal       @db.Decimal(10, 2)
-  shippingCost  Decimal       @default(4.90) @db.Decimal(10, 2) @map("shipping_cost")
-  firstName     String?       @map("first_name")
-  lastName      String?       @map("last_name")
-  address       String?
-  city          String?
-  postalCode    String?       @map("postal_code")
-  phone         String?
-  notes         String?
-  promoCodeId    String?   @map("promo_code_id")        // ← ajout
-  discountAmount Decimal?  @default(0) @db.Decimal(10, 2) @map("discount_amount") // ← ajout
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-  user          User          @relation(fields: [userId], references: [id])
-  items         OrderItem[]
-  promoCode     PromoCode?    @relation(fields: [promoCodeId], references: [id]) // ← ajout
+  id             String        @id @default(uuid())
+  userId         String        @map("user_id")
+  status         OrderStatus   @default(PENDING)
+  paymentStatus  PaymentStatus @default(SIMULATED) @map("payment_status")
+  paymentMethod  PaymentMethod @default(card) @map("payment_method")
+  total          Decimal       @db.Decimal(10, 2)
+  shippingCost   Decimal       @default(4.90) @db.Decimal(10, 2) @map("shipping_cost")
+  firstName      String?       @map("first_name")
+  lastName       String?       @map("last_name")
+  address        String?
+  city           String?
+  postalCode     String?       @map("postal_code")
+  phone          String?
+  notes          String?
+  promoCodeId    String?       @map("promo_code_id")
+  discountAmount Decimal?      @default(0) @db.Decimal(10, 2) @map("discount_amount")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  // ── Validation admin (tapis sur-mesure) ─────────────────────────
+  requiresValidation Boolean   @default(false) @map("requires_validation")
+  validatedAt        DateTime? @map("validated_at")
+  validatedBy        String?   @map("validated_by") // userId de l'admin
+
+  user      User        @relation(fields: [userId], references: [id])
+  items     OrderItem[]
+  promoCode PromoCode?  @relation(fields: [promoCodeId], references: [id])
 
   @@map("orders")
 }
@@ -213,28 +232,31 @@ model OrderItem {
   quantity    Int
   subtotal    Decimal  @db.Decimal(10, 2)
   createdAt   DateTime @default(now()) @map("created_at")
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // ── US338 Tapis de lutte ──────────────────────────────────────
+  longueur    Float?  @map("longueur")
+  largeur     Float?  @map("largeur")
+  epaisseur   Float?  @map("epaisseur")
+  planFileUrl String? @map("plan_file_url")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("order_items")
 }
+
 model PromoCode {
-  id           String    @id @default(uuid())
-  code         String    @unique
-  discountType DiscountType @default(PERCENTAGE)
-  discountValue Float
-  minOrderAmount Float?  @default(0)
-  maxUses      Int?
-  usedCount    Int       @default(0)
-  isActive     Boolean   @default(true)
-  expiresAt    DateTime?
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  orders       Order[]
+  id             String       @id @default(uuid())
+  code           String       @unique
+  discountType   DiscountType @default(PERCENTAGE)
+  discountValue  Float
+  minOrderAmount Float?       @default(0)
+  maxUses        Int?
+  usedCount      Int          @default(0)
+  isActive       Boolean      @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  orders         Order[]
 
   @@map("promo_codes")
-}
-
-enum DiscountType {
-  PERCENTAGE
-  FIXED
 }

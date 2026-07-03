@@ -8,9 +8,11 @@ import { ProductService } from './application/use-cases/product.service';
 import { PrismaProductRepository } from './infrastructure/adapters/prisma-product.repository';
 import { PRODUCT_REPOSITORY } from './domain/ports/product.repository';
 import { PrismaService } from '../../prisma/prisma.service';
+import { DimensionOcrController } from './infrastructure/dimension-ocr.controller'; // ← ajout
+import { DimensionOcrService }    from './application/use-cases/dimension-ocr.service'; // ← ajout
 
 @Module({
-  controllers: [CategoryController, ProductController],
+  controllers: [CategoryController, ProductController, DimensionOcrController], // ← ajout
   providers: [
     CategoryService,
     PrismaService,
@@ -23,6 +25,7 @@ import { PrismaService } from '../../prisma/prisma.service';
       provide: PRODUCT_REPOSITORY,
       useClass: PrismaProductRepository,
     },
+    DimensionOcrService, // ← ajout
   ],
   exports: [CategoryService, ProductService],
 })

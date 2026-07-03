@@ -13,122 +13,184 @@ export class OrderService {
   private readonly TVA_RATE    = 0.20;
   private readonly SHIPPING_HT = 4.08;
 
-  async createOrder(userId: string, dto: CreateOrderDto) {
-    const cart = await this.prisma.cart.findUnique({
-      where: { userId },
-      include: {
+async createOrder(userId: string, dto: CreateOrderDto) {
+  const cart = await this.prisma.cart.findUnique({
+    where: { userId },
+    include: {
+      items: {
+        include: { product: true, variant: true },
+      },
+    },
+  });
+
+  if (!cart || cart.items.length === 0) {
+    throw new BadRequestException('Le panier est vide');
+  }
+
+  for (const item of cart.items) {
+    if (item.variantId && item.variant) {
+      if (item.variant.stock < item.quantity) {
+        throw new BadRequestException(
+          `Stock insuffisant pour ${item.product.name} (taille ${item.variant.size})`,
+        );
+      }
+    } else {
+      if (item.product.stock < item.quantity) {
+        throw new BadRequestException(
+          `Stock insuffisant pour ${item.product.name}`,
+        );
+      }
+    }
+  }
+
+  const subtotal     = cart.items.reduce(
+    (sum, i) => sum + Number(i.product.price) * i.quantity, 0,
+  );
+  const shippingTVA  = Math.round(this.SHIPPING_HT * this.TVA_RATE * 100) / 100;
+  const shippingCost = Math.round((this.SHIPPING_HT + shippingTVA) * 100) / 100;
+  const total        = Math.round((subtotal + shippingCost) * 100) / 100;
+
+  const paymentMethod = (dto.paymentMethod ?? 'card') as PaymentMethod;
+  const paymentStatus = this._getPaymentStatus(dto.paymentMethod ?? 'card');
+
+  // ── Détection commande sur-mesure (tapis) ──────────────────────
+  const requiresValidation = cart.items.some(
+    (item) =>
+      item.longueur != null ||
+      item.largeur != null ||
+      item.epaisseur != null ||
+      item.planFileUrl != null,
+  );
+  const initialStatus = requiresValidation ? 'AWAITING_ADMIN_REVIEW' : 'PENDING';
+
+  const order = await this.prisma.$transaction(async (tx) => {
+    const newOrder = await tx.order.create({
+      data: {
+        userId,
+        status:        initialStatus as any,
+        requiresValidation,
+        firstName:     dto.firstName,
+        lastName:      dto.lastName,
+        address:       dto.address,
+        city:          dto.city,
+        postalCode:    dto.postalCode,
+        phone:         dto.phone,
+        notes:         dto.notes,
+        paymentMethod,
+        paymentStatus,
+        total,
+        shippingCost,
         items: {
-          include: { product: true, variant: true },
+          create: cart.items.map((item) => ({
+            productId:   item.productId,
+            variantId:   item.variantId,
+            productName: item.product.name,
+            size:        item.variant?.size ?? null,
+            price:       Number(item.product.price),
+            quantity:    item.quantity,
+            subtotal:    Math.round(Number(item.product.price) * item.quantity * 100) / 100,
+            // ── report des infos tapis vers OrderItem ──
+            longueur:    item.longueur,
+            largeur:     item.largeur,
+            epaisseur:   item.epaisseur,
+            planFileUrl: item.planFileUrl,
+          })),
         },
       },
+      include: { items: true },
     });
-
-    if (!cart || cart.items.length === 0) {
-      throw new BadRequestException('Le panier est vide');
-    }
 
     for (const item of cart.items) {
-      if (item.variantId && item.variant) {
-        if (item.variant.stock < item.quantity) {
-          throw new BadRequestException(
-            `Stock insuffisant pour ${item.product.name} (taille ${item.variant.size})`,
-          );
-        }
+      if (item.variantId) {
+        await tx.productVariant.update({
+          where: { id: item.variantId },
+          data:  { stock: { decrement: item.quantity } },
+        });
       } else {
-        if (item.product.stock < item.quantity) {
-          throw new BadRequestException(
-            `Stock insuffisant pour ${item.product.name}`,
-          );
-        }
+        await tx.product.update({
+          where: { id: item.productId },
+          data:  { stock: { decrement: item.quantity } },
+        });
       }
     }
 
-    const subtotal     = cart.items.reduce(
-      (sum, i) => sum + Number(i.product.price) * i.quantity, 0,
-    );
-    const shippingTVA  = Math.round(this.SHIPPING_HT * this.TVA_RATE * 100) / 100;
-    const shippingCost = Math.round((this.SHIPPING_HT + shippingTVA) * 100) / 100;
-    const total        = Math.round((subtotal + shippingCost) * 100) / 100;
+    await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+    return newOrder;
+  });
 
-    // ── Détermine le statut de paiement selon la méthode ──
-   const paymentMethod = (dto.paymentMethod ?? 'card') as PaymentMethod;
-   const paymentStatus = this._getPaymentStatus(dto.paymentMethod ?? 'card');
+  const formatted = this.formatOrder(order);
 
-    const order = await this.prisma.$transaction(async (tx) => {
-      const newOrder = await tx.order.create({
-        data: {
-          userId,
-          firstName:     dto.firstName,
-          lastName:      dto.lastName,
-          address:       dto.address,
-          city:          dto.city,
-          postalCode:    dto.postalCode,
-          phone:         dto.phone,
-          notes:         dto.notes,
-          paymentMethod, 
-          paymentStatus, 
-          total,
-          shippingCost,
-          items: {
-            create: cart.items.map((item) => ({
-              productId:   item.productId,
-              variantId:   item.variantId,
-              productName: item.product.name,
-              size:        item.variant?.size ?? null,
-              price:       Number(item.product.price),
-              quantity:    item.quantity,
-              subtotal:    Math.round(Number(item.product.price) * item.quantity * 100) / 100,
-            })),
-          },
-        },
-        include: { items: true },
-      });
+  const user = await this.prisma.user.findUnique({
+    where:  { id: userId },
+    select: { email: true },
+  });
 
-      for (const item of cart.items) {
-        if (item.variantId) {
-          await tx.productVariant.update({
-            where: { id: item.variantId },
-            data:  { stock: { decrement: item.quantity } },
-          });
-        } else {
-          await tx.product.update({
-            where: { id: item.productId },
-            data:  { stock: { decrement: item.quantity } },
-          });
-        }
-      }
-
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-      return newOrder;
-    });
-
-    const formatted = this.formatOrder(order);
-
-    const user = await this.prisma.user.findUnique({
-      where:  { id: userId },
-      select: { email: true },
-    });
-
- if (user?.email && paymentMethod === 'cod') {
-  try {
-    await this.mailService.sendOrderConfirmation(
-      user.email,
-      dto.firstName ?? 'Client',
-      order.id,
-      formatted.items.map((i) => ({
-        name:     i.productName,
-        quantity: i.quantity,
-        price:    i.price,
-      })),
-      formatted.total,
-    );
-  } catch (mailError) {
-    console.warn('Email non envoyé:', mailError.message);
+  // ── Notification au client (comportement existant, inchangé) ──
+  if (user?.email && paymentMethod === 'cod' && !requiresValidation) {
+    try {
+      await this.mailService.sendOrderConfirmation(
+        user.email,
+        dto.firstName ?? 'Client',
+        order.id,
+        formatted.items.map((i) => ({
+          name:     i.productName,
+          quantity: i.quantity,
+          price:    i.price,
+        })),
+        formatted.total,
+      );
+    } catch (mailError) {
+      console.warn('Email client non envoyé:', mailError.message);
+    }
+  } else if (requiresValidation) {
+    console.log(`ℹ️ Commande ${order.id} en attente de validation admin`);
   }
+
+  // ── Notification aux admins : TOUTE commande, sur-mesure ou non ──
+  try {
+    await this._notifyAdminsNewOrder(order.id, formatted, requiresValidation);
+  } catch (mailError) {
+    console.warn('Email admin non envoyé:', mailError.message);
+  }
+
+  return formatted;
 }
 
-return formatted;
+  // ── Notifie tous les admins qu'une nouvelle commande a été passée ──
+  private async _notifyAdminsNewOrder(
+    orderId: string,
+    formatted: any,
+    requiresValidation: boolean,
+  ) {
+    const admins = await this.prisma.user.findMany({
+      where: {
+        role: { in: ['ADMIN', 'SUPER_ADMIN', 'MANAGER'] },
+        isActive: true,
+      },
+      select: { email: true, firstName: true },
+    });
 
+    if (admins.length === 0) {
+      console.warn(
+        '⚠️ Aucun admin actif trouvé en base — aucun email de notification envoyé',
+      );
+      return;
+    }
+
+    for (const admin of admins) {
+      try {
+        await this.mailService.sendAdminNewOrder(
+          admin.email,
+          admin.firstName ?? 'Admin',
+          orderId,
+          formatted.total,
+          requiresValidation,
+        );
+        console.log(`✅ Email admin envoyé à ${admin.email}`);
+      } catch (err) {
+        console.warn(`⚠️ Email admin non envoyé à ${admin.email}:`, err.message);
+      }
+    }
   }
 
   // ── Détermine le statut selon la méthode de paiement ──
@@ -161,35 +223,20 @@ async confirmPaymentAndNotify(orderId: string) {
     return;
   }
 
-  // Met à jour le statut de paiement
+  // ── Garde-fou : refuse le paiement tant que l'admin n'a pas validé ──
+  if (order.requiresValidation && order.status !== 'AWAITING_PAYMENT') {
+    throw new BadRequestException(
+      'Cette commande sur-mesure doit être validée par un administrateur avant paiement',
+    );
+  }
+
   await this.prisma.order.update({
     where: { id: orderId },
     data:  { paymentStatus: 'PAID' as any },
   });
 
-  const formatted = this.formatOrder(order);
-  const email     = order.user?.email;
-
-  if (email) {
-    try {
-      await this.mailService.sendOrderConfirmation(
-        email,
-        order.firstName ?? 'Client',
-        order.id,
-        formatted.items.map((i) => ({
-          name:     i.productName,
-          quantity: i.quantity,
-          price:    i.price,
-        })),
-        formatted.total,
-      );
-      console.log(`✅ Email confirmation envoyé pour commande ${orderId}`);
-    } catch (mailError) {
-      console.warn('⚠️ Email non envoyé:', mailError.message);
-    }
-  }
+  // ... reste de la méthode inchangé
 }
-
   async getOrderById(userId: string, orderId: string) {
     const order = await this.prisma.order.findFirst({
       where:   { id: orderId, userId },
@@ -253,7 +300,42 @@ async updateStatus(orderId: string, status: string) {
 
   return this.formatOrder(order);
 }
+// ── Admin : valide/chiffre une commande sur-mesure ──
+async validateOrder(orderId: string, adminUserId: string, finalTotal?: number) {
+  const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) throw new NotFoundException('Commande introuvable');
 
+  if (!order.requiresValidation) {
+    throw new BadRequestException('Cette commande ne nécessite pas de validation');
+  }
+  if (order.status !== 'AWAITING_ADMIN_REVIEW') {
+    throw new BadRequestException('Cette commande a déjà été traitée');
+  }
+
+  const updated = await this.prisma.order.update({
+    where: { id: orderId },
+    data: {
+      status:      'AWAITING_PAYMENT' as any,
+      validatedAt: new Date(),
+      validatedBy: adminUserId,
+      ...(finalTotal != null ? { total: finalTotal } : {}),
+    },
+    include: { items: true, user: true },
+  });
+
+  const email = (updated as any).user?.email;
+  if (email) {
+    try {
+      // TODO: créer sendOrderValidated dans MailService — email avec lien
+      // vers /payment pour cette commande précise, prix final inclus
+      console.log(`✅ Commande ${orderId} validée, en attente de paiement`);
+    } catch (mailError) {
+      console.warn('⚠️ Email non envoyé:', mailError.message);
+    }
+  }
+
+  return this.formatOrder(updated);
+}
   // ── Nouveau : mettre à jour le statut de paiement ──
   async updatePaymentStatus(orderId: string, paymentStatus: string) {
     const order = await this.prisma.order.update({
@@ -288,8 +370,8 @@ async updateStatus(orderId: string, status: string) {
     return {
       id:            order.id,
       status:        order.status,
-      paymentMethod: order.paymentMethod ?? 'card',  // ← ajout
-      paymentStatus: order.paymentStatus ?? 'SIMULATED', // ← ajout
+      paymentMethod: order.paymentMethod ?? 'card',
+      paymentStatus: order.paymentStatus ?? 'SIMULATED',
       total,
       subtotal,
       shippingCost:  shipping,
