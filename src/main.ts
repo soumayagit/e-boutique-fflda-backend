@@ -16,7 +16,13 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors({ origin: '*', credentials: true });
+  app.enableCors({
+    origin: [
+      'https://boutique-fflda.fr',
+      'http://localhost:3000', // pratique si tu testes le front en local avec un port fixe
+    ],
+    credentials: true,
+  });
 
   const config = new DocumentBuilder()
     .setTitle('FFLDA API')
@@ -28,8 +34,8 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
-  console.log('API running on http://localhost:3000/api/v1');
+  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
+  console.log('API running on https://boutique-fflda.fr/api/v1');
   console.log('Swagger : http://localhost:3000/docs');
 }
 bootstrap();
