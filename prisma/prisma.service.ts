@@ -1,39 +1,11 @@
 // src/prisma/prisma.service.ts
 
-import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleDestroy {
-  private readonly logger = new Logger(PrismaService.name);
-
-  constructor() {
-    super();
-
-    // Intercepte chaque requête pour ajouter un retry automatique
-    // en cas de crash du moteur Prisma (panic Tokio "timer has gone away",
-    // fréquent sur les hébergements qui mettent le process en pause)
-    this.$use(async (params, next) => {
-      try {
-        return await next(params);
-      } catch (error: any) {
-        const isEngineCrash =
-          error?.message?.includes('Query engine exited') ||
-          error?.message?.includes('timer has gone away') ||
-          error?.code === 'P1017'; // "Server has closed the connection"
-
-        if (isEngineCrash) {
-          this.logger.warn(
-            '⚠️ Moteur Prisma planté, reconnexion et nouvelle tentative...',
-          );
-          await this.$disconnect();
-          await this.$connect();
-          return await next(params); // une seule nouvelle tentative
-        }
-        throw error;
-      }
-    });
-  }
+export class PrismaService extends PrismaClient
+  implements OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     await this.$disconnect();
