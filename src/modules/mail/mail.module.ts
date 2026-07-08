@@ -12,7 +12,7 @@ import { MailController } from './presentation/mail.controller';
         transport: {
           host: config.get('MAIL_HOST'),
           port: Number(config.get('MAIL_PORT')),
-          secure: false,
+          secure: Number(config.get('MAIL_PORT')) === 465, // true pour 465, false pour 587
           auth: {
             user: config.get('MAIL_USER'),
             pass: config.get('MAIL_PASS'),
