@@ -1,263 +1,36 @@
-generator client {
-  provider   = "prisma-client-js"
-  engineType = "binary"
-}
+// src/prisma/prisma.service.ts
+import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+@Injectable()
+export class PrismaService extends PrismaClient implements OnModuleDestroy {
+  private readonly logger = new Logger(PrismaService.name);
 
-enum Role {
-  SUPER_ADMIN
-  ADMIN
-  MANAGER
-  SUPPORT
-  CUSTOMER
-}
+  constructor() {
+    super();
 
-enum OrderStatus {
-  PENDING
-  AWAITING_ADMIN_REVIEW   // commande avec tapis sur-mesure, en attente de validation/chiffrage
-  AWAITING_PAYMENT        // validée par l'admin, le client peut payer
-  CONFIRMED
-  SHIPPED
-  DELIVERED
-  CANCELLED
-}
+    // Intercepte chaque requête pour ajouter un retry automatique
+    this.$use(async (params, next) => {
+      try {
+        return await next(params);
+      } catch (error: any) {
+        const isEngineCrash =
+          error?.message?.includes('Query engine exited') ||
+          error?.message?.includes('timer has gone away') ||
+          error?.code === 'P1017'; // "Server has closed the connection"
 
-enum PaymentStatus {
-  PENDING
-  SIMULATED
-  PAID
-  FAILED
-  REFUNDED
-}
+        if (isEngineCrash) {
+          this.logger.warn('⚠️ Moteur Prisma planté, reconnexion et nouvelle tentative...');
+          await this.$disconnect();
+          await this.$connect();
+          return await next(params); // une seule nouvelle tentative
+        }
+        throw error;
+      }
+    });
+  }
 
-enum PaymentMethod {
-  card
-  paypal
-  cod
-}
-
-enum DiscountType {
-  PERCENTAGE
-  FIXED
-}
-
-model User {
-  id               String         @id @default(uuid())
-  email            String         @unique
-  passwordHash     String         @map("password_hash")
-  firstName        String         @map("first_name")
-  lastName         String         @map("last_name")
-  phone            String?
-  role             Role           @default(CUSTOMER)
-  isActive         Boolean        @default(true) @map("is_active")
-  emailVerified    Boolean        @default(false) @map("email_verified")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-  resetToken       String?
-  resetTokenExpiry DateTime?
-  refreshTokens    RefreshToken[]
-  reviews          Review[]
-  cart             Cart?
-  orders           Order[]
-  wishlistItems    WishlistItem[]
-
-  @@map("users")
-}
-
-model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  tokenHash String   @map("token_hash")
-  expiresAt DateTime @map("expires_at")
-  isRevoked Boolean  @default(false) @map("is_revoked")
-  createdAt DateTime @default(now()) @map("created_at")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([tokenHash])
-  @@map("refresh_tokens")
-}
-
-model WishlistItem {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  productId String   @map("product_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, productId])
-  @@map("wishlist_items")
-}
-
-model Category {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  description String?
-  imageUrl    String?   @map("image_url")
-  isActive    Boolean   @default(true) @map("is_active")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  products    Product[]
-
-  @@map("categories")
-}
-
-model Product {
-  id            String           @id @default(uuid())
-  name          String
-  description   String?
-  price         Decimal          @db.Decimal(10, 2)
-  stock         Int              @default(0)
-  imageUrl      String?          @map("image_url")
-  isActive      Boolean          @default(true) @map("is_active")
-  categoryId    String           @map("category_id")
-  largeur       Float?
-  longueur      Float?
-  epaisseur     Float?
-  createdAt     DateTime         @default(now()) @map("created_at")
-  updatedAt     DateTime         @updatedAt @map("updated_at")
-  category      Category         @relation(fields: [categoryId], references: [id])
-  reviews       Review[]
-  variants      ProductVariant[]
-  cartItems     CartItem[]
-  wishlistItems WishlistItem[]
-
-  @@map("products")
-}
-
-model Review {
-  id        String   @id @default(uuid())
-  productId String   @map("product_id")
-  userId    String   @map("user_id")
-  rating    Float
-  comment   String?
-  createdAt DateTime @default(now()) @map("created_at")
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([productId])
-  @@map("reviews")
-}
-
-model ProductVariant {
-  id        String     @id @default(uuid())
-  productId String     @map("product_id")
-  size      String
-  stock     Int        @default(0)
-  createdAt DateTime   @default(now()) @map("created_at")
-  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
-  cartItems CartItem[]
-
-  @@map("product_variants")
-}
-
-model Cart {
-  id        String     @id @default(uuid())
-  userId    String     @unique @map("user_id")
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
-  expiresAt DateTime   @default(dbgenerated("NOW() + INTERVAL '1 month'")) @map("expires_at")
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     CartItem[]
-
-  @@map("carts")
-}
-
-model CartItem {
-  id        String   @id @default(uuid())
-  cartId    String   @map("cart_id")
-  productId String   @map("product_id")
-  variantId String?  @map("variant_id")
-  quantity  Int      @default(1)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // ── US338 Tapis de lutte ──────────────────────────────────────
-  longueur    Float?  @map("longueur")
-  largeur     Float?  @map("largeur")
-  epaisseur   Float?  @map("epaisseur")
-  planFileUrl String? @map("plan_file_url")
-
-  cart    Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
-
-  @@map("cart_items")
-}
-
-model Order {
-  id             String        @id @default(uuid())
-  userId         String        @map("user_id")
-  status         OrderStatus   @default(PENDING)
-  paymentStatus  PaymentStatus @default(SIMULATED) @map("payment_status")
-  paymentMethod  PaymentMethod @default(card) @map("payment_method")
-  total          Decimal       @db.Decimal(10, 2)
-  shippingCost   Decimal       @default(4.90) @db.Decimal(10, 2) @map("shipping_cost")
-  firstName      String?       @map("first_name")
-  lastName       String?       @map("last_name")
-  address        String?
-  city           String?
-  postalCode     String?       @map("postal_code")
-  phone          String?
-  notes          String?
-  promoCodeId    String?       @map("promo_code_id")
-  discountAmount Decimal?      @default(0) @db.Decimal(10, 2) @map("discount_amount")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-
-  // ── Validation admin (tapis sur-mesure) ─────────────────────────
-  requiresValidation Boolean   @default(false) @map("requires_validation")
-  validatedAt        DateTime? @map("validated_at")
-  validatedBy        String?   @map("validated_by") // userId de l'admin
-
-  user      User        @relation(fields: [userId], references: [id])
-  items     OrderItem[]
-  promoCode PromoCode?  @relation(fields: [promoCodeId], references: [id])
-
-  @@map("orders")
-}
-
-model OrderItem {
-  id          String   @id @default(uuid())
-  orderId     String   @map("order_id")
-  productId   String   @map("product_id")
-  variantId   String?  @map("variant_id")
-  productName String   @map("product_name")
-  size        String?
-  price       Decimal  @db.Decimal(10, 2)
-  quantity    Int
-  subtotal    Decimal  @db.Decimal(10, 2)
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  // ── US338 Tapis de lutte ──────────────────────────────────────
-  longueur    Float?  @map("longueur")
-  largeur     Float?  @map("largeur")
-  epaisseur   Float?  @map("epaisseur")
-  planFileUrl String? @map("plan_file_url")
-
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@map("order_items")
-}
-
-model PromoCode {
-  id             String       @id @default(uuid())
-  code           String       @unique
-  discountType   DiscountType @default(PERCENTAGE)
-  discountValue  Float
-  minOrderAmount Float?       @default(0)
-  maxUses        Int?
-  usedCount      Int          @default(0)
-  isActive       Boolean      @default(true)
-  expiresAt      DateTime?
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-  orders         Order[]
-
-  @@map("promo_codes")
+  async onModuleDestroy(): Promise<void> {
+    await this.$disconnect();
+  }
 }
