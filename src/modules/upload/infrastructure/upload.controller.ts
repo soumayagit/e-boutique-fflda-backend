@@ -44,12 +44,13 @@ export class UploadController {
         },
       }),
       limits: { fileSize: MAX_SIZE },
-      fileFilter: (_req, file, cb) => {
-        if (!ALLOWED_MIME.includes(file.mimetype)) {
-          return cb(new BadRequestException('Type de fichier non autorisé'), false);
-        }
-        cb(null, true);
-      },
+     fileFilter: (_req, file, cb) => {
+  console.log('MIME reçu:', file.mimetype, '| nom:', file.originalname); // ← ajouté
+  if (!ALLOWED_MIME.includes(file.mimetype)) {
+    return cb(new BadRequestException('Type de fichier non autorisé'), false);
+  }
+  cb(null, true);
+},
     }),
   )
   uploadFile(@UploadedFile() file: Express.Multer.File) {
