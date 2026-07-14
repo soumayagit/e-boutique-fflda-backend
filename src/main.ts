@@ -1,10 +1,17 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express'; // ← ajouté
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { join } from 'path'; // ← ajouté
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule); // ← <NestExpressApplication>
+
+  // ── Sert le dossier uploads/ en statique via /uploads/... ──
+ app.useStaticAssets(join(__dirname, '..', '..', 'uploads'), {
+  prefix: '/uploads/',
+});
 
   app.setGlobalPrefix('api/v1');
 
@@ -38,15 +45,11 @@ async function bootstrap() {
   console.log('API running on https://boutique-fflda.fr/api/v1');
   console.log('Swagger : http://localhost:3000/docs');
 
-  // ── Keep-alive : évite que Hostinger gèle le process en inactivité,
-  // ce qui casse le timer interne du moteur Prisma ──
   setInterval(() => {
     console.log('💓 keep-alive ping');
-  }, 4 * 60 * 1000); // toutes les 4 minutes
+  }, 4 * 60 * 1000);
 }
 
-// ── Filet de sécurité : si un crash non catché survient malgré tout,
-// on force un arrêt propre pour qu'Hostinger relance un process sain ──
 process.on('uncaughtException', (err) => {
   console.error('💥 Uncaught exception, redémarrage forcé:', err);
   process.exit(1);

@@ -14,6 +14,8 @@ import { MailModule } from './modules/mail/mail.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { PromoModule } from './modules/promo/promo.module'; 
 import { PaymentModule } from './modules/payment/payment.module';
+import { UploadModule } from './modules/upload/upload.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -28,6 +30,8 @@ import { PaymentModule } from './modules/payment/payment.module';
     WishlistModule,
     PaymentModule, 
     PromoModule, 
+    UploadModule,
+
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

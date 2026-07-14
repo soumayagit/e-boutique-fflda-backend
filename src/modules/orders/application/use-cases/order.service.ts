@@ -212,6 +212,7 @@ async createOrder(userId: string, dto: CreateOrderDto) {
     return orders.map((o) => this.formatOrder(o));
   }
   // ── Confirme le paiement et envoie l'email (Stripe/PayPal) ──
+// ── Confirme le paiement et envoie l'email (Stripe/PayPal) ──
 async confirmPaymentAndNotify(orderId: string) {
   const order = await this.prisma.order.findUnique({
     where:   { id: orderId },
@@ -230,12 +231,37 @@ async confirmPaymentAndNotify(orderId: string) {
     );
   }
 
-  await this.prisma.order.update({
-    where: { id: orderId },
-    data:  { paymentStatus: 'PAID' as any },
+  const updatedOrder = await this.prisma.order.update({
+    where:   { id: orderId },
+    data:    { paymentStatus: 'PAID' as any, status: 'CONFIRMED' as any },
+    include: { items: true, user: true },
   });
 
-  // ... reste de la méthode inchangé
+  // ── Envoie l'email de confirmation au client ──
+  const email     = (updatedOrder as any).user?.email;
+  const firstName = updatedOrder.firstName ?? 'Client';
+
+  if (email) {
+    try {
+      const formatted = this.formatOrder(updatedOrder);
+      await this.mailService.sendOrderConfirmation(
+        email,
+        firstName,
+        updatedOrder.id,
+        formatted.items.map((i: any) => ({
+          name:     i.productName,
+          quantity: i.quantity,
+          price:    i.price,
+        })),
+        formatted.total,
+      );
+      console.log(`✅ Email confirmation paiement envoyé à ${email}`);
+    } catch (mailError) {
+      console.warn('⚠️ Email confirmation paiement non envoyé:', mailError.message);
+    }
+  }
+
+  return this.formatOrder(updatedOrder);
 }
   async getOrderById(userId: string, orderId: string) {
     const order = await this.prisma.order.findFirst({
