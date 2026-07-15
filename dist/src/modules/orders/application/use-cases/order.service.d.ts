@@ -1,10 +1,12 @@
 import { PrismaService } from '../../../../../prisma/prisma.service';
 import { CreateOrderDto } from '../dto/order.dto';
 import { MailService } from '../../../mail/mail.service';
+import { InvoiceService } from './invoice.service';
 export declare class OrderService {
     private readonly prisma;
     private readonly mailService;
-    constructor(prisma: PrismaService, mailService: MailService);
+    private readonly invoiceService;
+    constructor(prisma: PrismaService, mailService: MailService, invoiceService: InvoiceService);
     private readonly TVA_RATE;
     private readonly SHIPPING_HT;
     createOrder(userId: string, dto: CreateOrderDto): Promise<{
@@ -93,6 +95,8 @@ export declare class OrderService {
         items: any;
         user: any;
     } | undefined>;
+    getInvoicePdf(userId: string, orderId: string): Promise<Buffer>;
+    resendInvoiceByAdmin(orderId: string, adminUserId: string): Promise<void>;
     getOrderById(userId: string, orderId: string): Promise<{
         id: any;
         status: any;

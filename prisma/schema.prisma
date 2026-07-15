@@ -217,6 +217,7 @@ model Order {
   user      User        @relation(fields: [userId], references: [id])
   items     OrderItem[]
   promoCode PromoCode?  @relation(fields: [promoCodeId], references: [id])
+  invoice Invoice?
 
   @@map("orders")
 }
@@ -259,4 +260,15 @@ model PromoCode {
   orders         Order[]
 
   @@map("promo_codes")
+}
+model Invoice {
+  id          String   @id @default(cuid())
+  orderId     String   @unique
+  order       Order    @relation(fields: [orderId], references: [id])
+  invoiceNumber String @unique   // ex: FFLDA-2026-00001
+  issuedAt    DateTime @default(now())
+  totalTTC    Decimal
+  createdBy   String?            
+
+  @@map("invoices")
 }

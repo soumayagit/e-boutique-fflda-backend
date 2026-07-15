@@ -23,7 +23,41 @@ export class MailService {
   async sendMail(to: string, subject: string, html: string): Promise<void> {
     await this.mailerService.sendMail({ to, subject, html });
   }
-
+async sendInvoice(
+    email: string,
+    firstName: string,
+    orderId: string,
+    pdfBuffer: Buffer,
+  ): Promise<void> {
+    const shortId = orderId.substring(0, 8).toUpperCase();
+    await this.mailerService.sendMail({
+      to:      email,
+      subject: `🧾 Votre facture — Commande #${shortId}`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+          <div style="background:#0D1B3E;padding:20px;text-align:center;">
+            <h1 style="color:white;margin:0;">🧾 Votre facture</h1>
+          </div>
+          <div style="padding:20px;">
+            <p>Bonjour <strong>${firstName}</strong>,</p>
+            <p>Vous trouverez ci-joint la facture de votre commande <strong>#${shortId}</strong>.</p>
+            <p>Merci pour votre confiance !</p>
+          </div>
+          <div style="background:#f0f0f0;padding:10px;text-align:center;font-size:12px;color:gray;">
+            E-Boutique FFLDA · France Fédération de Lutte et Disciplines Associées<br>
+            Cet email est automatique, merci de ne pas y répondre.
+          </div>
+        </div>
+      `,
+      attachments: [
+        {
+          filename: `facture-${shortId}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ],
+    });
+  }
   async sendOrderConfirmation(
     email: string,
     firstName: string,

@@ -33,6 +33,36 @@ let MailService = class MailService {
     async sendMail(to, subject, html) {
         await this.mailerService.sendMail({ to, subject, html });
     }
+    async sendInvoice(email, firstName, orderId, pdfBuffer) {
+        const shortId = orderId.substring(0, 8).toUpperCase();
+        await this.mailerService.sendMail({
+            to: email,
+            subject: `🧾 Votre facture — Commande #${shortId}`,
+            html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+          <div style="background:#0D1B3E;padding:20px;text-align:center;">
+            <h1 style="color:white;margin:0;">🧾 Votre facture</h1>
+          </div>
+          <div style="padding:20px;">
+            <p>Bonjour <strong>${firstName}</strong>,</p>
+            <p>Vous trouverez ci-joint la facture de votre commande <strong>#${shortId}</strong>.</p>
+            <p>Merci pour votre confiance !</p>
+          </div>
+          <div style="background:#f0f0f0;padding:10px;text-align:center;font-size:12px;color:gray;">
+            E-Boutique FFLDA · France Fédération de Lutte et Disciplines Associées<br>
+            Cet email est automatique, merci de ne pas y répondre.
+          </div>
+        </div>
+      `,
+            attachments: [
+                {
+                    filename: `facture-${shortId}.pdf`,
+                    content: pdfBuffer,
+                    contentType: 'application/pdf',
+                },
+            ],
+        });
+    }
     async sendOrderConfirmation(email, firstName, orderId, items, total) {
         const itemsHtml = items
             .map(i => `<tr><td>${i.name}</td><td>${i.quantity}</td><td>${i.price} €</td></tr>`)

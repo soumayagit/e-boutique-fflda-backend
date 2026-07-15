@@ -18,8 +18,21 @@ const swagger_1 = require("@nestjs/swagger");
 const order_service_1 = require("../application/use-cases/order.service");
 const order_dto_1 = require("../application/dto/order.dto");
 const jwt_auth_guard_1 = require("../../auth/infrastructure/guards/jwt-auth.guard");
+const common_2 = require("@nestjs/common");
 let OrderController = class OrderController {
     orderService;
+    async downloadInvoice(req, id, res) {
+        const pdfBuffer = await this.orderService.getInvoicePdf(req.user.id, id);
+        res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="facture-${id.substring(0, 8).toUpperCase()}.pdf"`,
+        });
+        res.send(pdfBuffer);
+    }
+    async resendInvoice(req, id) {
+        await this.orderService.resendInvoiceByAdmin(id, req.user.id);
+        return { message: 'Facture envoyée avec succès' };
+    }
     constructor(orderService) {
         this.orderService = orderService;
     }
@@ -43,6 +56,25 @@ let OrderController = class OrderController {
     }
 };
 exports.OrderController = OrderController;
+__decorate([
+    (0, common_1.Get)(':id/invoice'),
+    (0, swagger_1.ApiOperation)({ summary: 'Télécharger la facture de sa commande' }),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_2.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", Promise)
+], OrderController.prototype, "downloadInvoice", null);
+__decorate([
+    (0, common_1.Post)('admin/:id/invoice/send'),
+    (0, swagger_1.ApiOperation)({ summary: 'Admin — renvoyer la facture par email' }),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], OrderController.prototype, "resendInvoice", null);
 __decorate([
     (0, common_1.Post)(),
     (0, swagger_1.ApiOperation)({ summary: 'Créer une commande depuis le panier' }),

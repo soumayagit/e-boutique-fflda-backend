@@ -4,6 +4,7 @@ export declare class MailService {
     constructor(mailerService: MailerService);
     sendResetEmail(email: string, token: string): Promise<void>;
     sendMail(to: string, subject: string, html: string): Promise<void>;
+    sendInvoice(email: string, firstName: string, orderId: string, pdfBuffer: Buffer): Promise<void>;
     sendOrderConfirmation(email: string, firstName: string, orderId: string, items: {
         name: string;
         quantity: number;

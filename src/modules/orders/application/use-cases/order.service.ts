@@ -3,11 +3,14 @@ import { PrismaService } from '../../../../../prisma/prisma.service';
 import { CreateOrderDto } from '../dto/order.dto';
 import { MailService } from '../../../mail/mail.service';
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
+import { InvoiceService } from './invoice.service'; 
+
 @Injectable()
 export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
+    private readonly invoiceService: InvoiceService,
   ) {}
 
   private readonly TVA_RATE    = 0.20;
@@ -241,7 +244,7 @@ async confirmPaymentAndNotify(orderId: string) {
   const email     = (updatedOrder as any).user?.email;
   const firstName = updatedOrder.firstName ?? 'Client';
 
-  if (email) {
+ if (email) {
     try {
       const formatted = this.formatOrder(updatedOrder);
       await this.mailService.sendOrderConfirmation(
@@ -256,6 +259,13 @@ async confirmPaymentAndNotify(orderId: string) {
         formatted.total,
       );
       console.log(`✅ Email confirmation paiement envoyé à ${email}`);
+
+      // ── Génération et envoi automatique de la facture ──
+ const invoiceNumber = await this.invoiceService.getOrCreateInvoiceNumber(
+        updatedOrder.id, formatted.total,
+      );
+      const pdfBuffer = await this.invoiceService.generateInvoicePdf(formatted, invoiceNumber);      await this.mailService.sendInvoice(email, firstName, updatedOrder.id, pdfBuffer);
+      console.log(`✅ Facture envoyée à ${email}`);
     } catch (mailError) {
       console.warn('⚠️ Email confirmation paiement non envoyé:', mailError.message);
     }
@@ -263,6 +273,30 @@ async confirmPaymentAndNotify(orderId: string) {
 
   return this.formatOrder(updatedOrder);
 }
+async getInvoicePdf(userId: string, orderId: string): Promise<Buffer> {
+    const formatted = await this.getOrderById(userId, orderId);
+    const invoiceNumber = await this.invoiceService.getOrCreateInvoiceNumber(orderId, formatted.total);
+    return this.invoiceService.generateInvoicePdf(formatted, invoiceNumber);
+  }
+
+  // ── Admin : renvoie la facture manuellement à n'importe quel moment ──
+  async resendInvoiceByAdmin(orderId: string, adminUserId: string): Promise<void> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true, user: true },
+    });
+    if (!order) throw new NotFoundException('Commande introuvable');
+
+    const email = (order as any).user?.email;
+    if (!email) throw new BadRequestException('Aucun email associé à cette commande');
+
+    const formatted = this.formatOrder(order);
+    const invoiceNumber = await this.invoiceService.getOrCreateInvoiceNumber(
+      orderId, formatted.total, adminUserId,
+    );
+    const pdfBuffer = await this.invoiceService.generateInvoicePdf(formatted, invoiceNumber);
+    await this.mailService.sendInvoice(email, order.firstName ?? 'Client', orderId, pdfBuffer);
+  }
   async getOrderById(userId: string, orderId: string) {
     const order = await this.prisma.order.findFirst({
       where:   { id: orderId, userId },

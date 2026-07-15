@@ -6,12 +6,36 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrderService } from '../application/use-cases/order.service';
 import { CreateOrderDto } from '../application/dto/order.dto';
 import { JwtAuthGuard } from '../../auth/infrastructure/guards/jwt-auth.guard';
+import { Res } from '@nestjs/common';
+import type { Response } from 'express';
 
 @ApiTags('orders')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('orders')
 export class OrderController {
+    @Get(':id/invoice')
+  @ApiOperation({ summary: 'Télécharger la facture de sa commande' })
+  async downloadInvoice(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const pdfBuffer = await this.orderService.getInvoicePdf(req.user.id, id);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="facture-${id.substring(0, 8).toUpperCase()}.pdf"`,
+    });
+    res.send(pdfBuffer);
+  }
+
+  // ── Admin : renvoyer manuellement la facture par email ──
+  @Post('admin/:id/invoice/send')
+  @ApiOperation({ summary: 'Admin — renvoyer la facture par email' })
+  async resendInvoice(@Request() req: any, @Param('id') id: string) {
+    await this.orderService.resendInvoiceByAdmin(id, req.user.id);
+    return { message: 'Facture envoyée avec succès' };
+  }
   constructor(private readonly orderService: OrderService) {}
 
   @Post()
@@ -42,6 +66,8 @@ export class OrderController {
   @ApiOperation({ summary: 'Admin — modifier le statut' })
   updateStatus(@Param('id') id: string, @Body('status') status: string) {
     return this.orderService.updateStatus(id, status);
+
+    
   }
 
   // ── Admin : valide et chiffre une commande sur-mesure (tapis) ──
@@ -54,4 +80,5 @@ export class OrderController {
   ) {
     return this.orderService.validateOrder(id, req.user.id, body.total);
   }
+  
 }

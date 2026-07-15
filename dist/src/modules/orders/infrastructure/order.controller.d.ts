@@ -1,7 +1,12 @@
 import { OrderService } from '../application/use-cases/order.service';
 import { CreateOrderDto } from '../application/dto/order.dto';
+import type { Response } from 'express';
 export declare class OrderController {
     private readonly orderService;
+    downloadInvoice(req: any, id: string, res: Response): Promise<void>;
+    resendInvoice(req: any, id: string): Promise<{
+        message: string;
+    }>;
     constructor(orderService: OrderService);
     createOrder(req: any, dto: CreateOrderDto): Promise<{
         id: any;

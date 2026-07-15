@@ -14,12 +14,15 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../../../../prisma/prisma.service");
 const mail_service_1 = require("../../../mail/mail.service");
 const client_1 = require("@prisma/client");
+const invoice_service_1 = require("./invoice.service");
 let OrderService = class OrderService {
     prisma;
     mailService;
-    constructor(prisma, mailService) {
+    invoiceService;
+    constructor(prisma, mailService, invoiceService) {
         this.prisma = prisma;
         this.mailService = mailService;
+        this.invoiceService = invoiceService;
     }
     TVA_RATE = 0.20;
     SHIPPING_HT = 4.08;
@@ -204,12 +207,36 @@ let OrderService = class OrderService {
                     price: i.price,
                 })), formatted.total);
                 console.log(`✅ Email confirmation paiement envoyé à ${email}`);
+                const invoiceNumber = await this.invoiceService.getOrCreateInvoiceNumber(updatedOrder.id, formatted.total);
+                const pdfBuffer = await this.invoiceService.generateInvoicePdf(formatted, invoiceNumber);
+                await this.mailService.sendInvoice(email, firstName, updatedOrder.id, pdfBuffer);
+                console.log(`✅ Facture envoyée à ${email}`);
             }
             catch (mailError) {
                 console.warn('⚠️ Email confirmation paiement non envoyé:', mailError.message);
             }
         }
         return this.formatOrder(updatedOrder);
+    }
+    async getInvoicePdf(userId, orderId) {
+        const formatted = await this.getOrderById(userId, orderId);
+        const invoiceNumber = await this.invoiceService.getOrCreateInvoiceNumber(orderId, formatted.total);
+        return this.invoiceService.generateInvoicePdf(formatted, invoiceNumber);
+    }
+    async resendInvoiceByAdmin(orderId, adminUserId) {
+        const order = await this.prisma.order.findUnique({
+            where: { id: orderId },
+            include: { items: true, user: true },
+        });
+        if (!order)
+            throw new common_1.NotFoundException('Commande introuvable');
+        const email = order.user?.email;
+        if (!email)
+            throw new common_1.BadRequestException('Aucun email associé à cette commande');
+        const formatted = this.formatOrder(order);
+        const invoiceNumber = await this.invoiceService.getOrCreateInvoiceNumber(orderId, formatted.total, adminUserId);
+        const pdfBuffer = await this.invoiceService.generateInvoicePdf(formatted, invoiceNumber);
+        await this.mailService.sendInvoice(email, order.firstName ?? 'Client', orderId, pdfBuffer);
     }
     async getOrderById(userId, orderId) {
         const order = await this.prisma.order.findFirst({
@@ -364,6 +391,7 @@ exports.OrderService = OrderService;
 exports.OrderService = OrderService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        mail_service_1.MailService])
+        mail_service_1.MailService,
+        invoice_service_1.InvoiceService])
 ], OrderService);
 //# sourceMappingURL=order.service.js.map

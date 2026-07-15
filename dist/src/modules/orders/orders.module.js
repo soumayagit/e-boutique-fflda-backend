@@ -12,6 +12,7 @@ const order_controller_1 = require("./infrastructure/order.controller");
 const order_service_1 = require("./application/use-cases/order.service");
 const prisma_module_1 = require("../../../prisma/prisma.module");
 const mail_module_1 = require("../mail/mail.module");
+const invoice_service_1 = require("./application/use-cases/invoice.service");
 let OrdersModule = class OrdersModule {
 };
 exports.OrdersModule = OrdersModule;
@@ -19,7 +20,7 @@ exports.OrdersModule = OrdersModule = __decorate([
     (0, common_1.Module)({
         imports: [prisma_module_1.PrismaModule, mail_module_1.MailModule],
         controllers: [order_controller_1.OrderController],
-        providers: [order_service_1.OrderService],
+        providers: [order_service_1.OrderService, invoice_service_1.InvoiceService],
         exports: [order_service_1.OrderService],
     })
 ], OrdersModule);
