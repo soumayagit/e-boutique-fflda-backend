@@ -32,6 +32,7 @@ export declare class PaymentController {
         paypalOrderId: string;
         status: string;
         captureId: string;
+        internalOrderId: string | undefined;
         simulated: boolean;
     }>;
     createCheckoutSession(dto: CreatePaymentIntentDto): Promise<{

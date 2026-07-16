@@ -98,13 +98,14 @@ export class PaypalService {
     };
   }
 
-  async captureOrder(paypalOrderId: string) {
+  async captureOrder(paypalOrderId: string, internalOrderId?: string) {
     // ── Mode simulé ──
     if (this.isSimulated || paypalOrderId.startsWith('SIMULATED_')) {
       return {
         paypalOrderId,
         status:    'COMPLETED',
         captureId: `SIMULATED_CAPTURE_${Date.now()}`,
+        internalOrderId,
         simulated: true,
       };
     }
@@ -127,6 +128,7 @@ export class PaypalService {
       id: string;
       status: string;
       purchase_units: {
+        reference_id?: string;
         payments: {
           captures: { id: string; status: string }[];
         };
@@ -134,10 +136,11 @@ export class PaypalService {
     };
 
     return {
-      paypalOrderId: data.id,
-      status:        data.status,
-      captureId:     data.purchase_units[0]?.payments?.captures[0]?.id,
-      simulated:     false,
+      paypalOrderId:    data.id,
+      status:           data.status,
+      captureId:        data.purchase_units[0]?.payments?.captures[0]?.id,
+      internalOrderId:  data.purchase_units[0]?.reference_id,
+      simulated:        false,
     };
   }
 }

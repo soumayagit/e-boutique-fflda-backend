@@ -21,7 +21,7 @@ export class PaymentService {
     return this.createPaypalOrderUseCase.execute(dto);
   }
 
-  async capturePaypalOrder(paypalOrderId: string) {
-    return this.capturePaypalOrderUseCase.execute(paypalOrderId);
+  async capturePaypalOrder(paypalOrderId: string, internalOrderId?: string) {
+    return this.capturePaypalOrderUseCase.execute(paypalOrderId, internalOrderId);
   }
 }

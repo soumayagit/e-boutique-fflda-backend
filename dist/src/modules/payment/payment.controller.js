@@ -70,8 +70,13 @@ let PaymentController = class PaymentController {
         return this.paymentService.createPaypalOrder(dto);
     }
     async capturePaypalOrder(orderId) {
-        const result = await this.paymentService.capturePaypalOrder(orderId);
-        await this.orderService.confirmPaymentAndNotify(orderId);
+        const result = await this.paymentService.capturePaypalOrder(orderId, orderId);
+        if (result.internalOrderId) {
+            await this.orderService.confirmPaymentAndNotify(result.internalOrderId);
+        }
+        else {
+            console.warn('⚠️ Impossible de retrouver la commande interne pour la facture PayPal');
+        }
         return result;
     }
     async createCheckoutSession(dto) {

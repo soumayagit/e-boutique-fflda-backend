@@ -5,7 +5,7 @@ import { PaypalService } from '../../infrastructure/paypal.service';
 export class CapturePaypalOrderUseCase {
   constructor(private readonly paypalService: PaypalService) {}
 
-  async execute(paypalOrderId: string) {
-    return this.paypalService.captureOrder(paypalOrderId);
+  async execute(paypalOrderId: string, internalOrderId?: string) {
+    return this.paypalService.captureOrder(paypalOrderId, internalOrderId);
   }
 }

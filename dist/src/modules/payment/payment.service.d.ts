@@ -23,10 +23,11 @@ export declare class PaymentService {
         simulated: boolean;
         message?: undefined;
     }>;
-    capturePaypalOrder(paypalOrderId: string): Promise<{
+    capturePaypalOrder(paypalOrderId: string, internalOrderId?: string): Promise<{
         paypalOrderId: string;
         status: string;
         captureId: string;
+        internalOrderId: string | undefined;
         simulated: boolean;
     }>;
 }

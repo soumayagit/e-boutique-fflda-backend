@@ -29,8 +29,8 @@ let PaymentService = class PaymentService {
     async createPaypalOrder(dto) {
         return this.createPaypalOrderUseCase.execute(dto);
     }
-    async capturePaypalOrder(paypalOrderId) {
-        return this.capturePaypalOrderUseCase.execute(paypalOrderId);
+    async capturePaypalOrder(paypalOrderId, internalOrderId) {
+        return this.capturePaypalOrderUseCase.execute(paypalOrderId, internalOrderId);
     }
 };
 exports.PaymentService = PaymentService;

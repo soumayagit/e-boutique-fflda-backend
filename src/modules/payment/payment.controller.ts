@@ -87,12 +87,16 @@ export class PaymentController {
     return this.paymentService.createPaypalOrder(dto);
   }
 
-  @Public()
+ @Public()
   @Post('paypal/capture/:orderId')
   async capturePaypalOrder(@Param('orderId') orderId: string) {
-    const result = await this.paymentService.capturePaypalOrder(orderId);
+    const result = await this.paymentService.capturePaypalOrder(orderId, orderId);
     // ← envoie l'email après capture réussie du paiement
-    await this.orderService.confirmPaymentAndNotify(orderId);
+    if (result.internalOrderId) {
+      await this.orderService.confirmPaymentAndNotify(result.internalOrderId);
+    } else {
+      console.warn('⚠️ Impossible de retrouver la commande interne pour la facture PayPal');
+    }
     return result;
   }
 

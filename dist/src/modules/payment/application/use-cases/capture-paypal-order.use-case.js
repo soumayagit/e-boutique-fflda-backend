@@ -17,8 +17,8 @@ let CapturePaypalOrderUseCase = class CapturePaypalOrderUseCase {
     constructor(paypalService) {
         this.paypalService = paypalService;
     }
-    async execute(paypalOrderId) {
-        return this.paypalService.captureOrder(paypalOrderId);
+    async execute(paypalOrderId, internalOrderId) {
+        return this.paypalService.captureOrder(paypalOrderId, internalOrderId);
     }
 };
 exports.CapturePaypalOrderUseCase = CapturePaypalOrderUseCase;
