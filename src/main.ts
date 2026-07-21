@@ -25,7 +25,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      'https://api.boutique-fflda.fr',
+      'https://boutique-fflda.fr',
       'http://localhost:3000',
     ],
     credentials: true,
@@ -42,7 +42,7 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
 
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
-  console.log('API running on https://api.boutique-fflda.fr/api/v1');
+  console.log('API running on https://boutique-fflda.fr/api/v1');
   console.log('Swagger : http://localhost:3000/docs');
 
   setInterval(() => {
