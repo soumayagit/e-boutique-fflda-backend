@@ -52,7 +52,7 @@ async createCheckoutSession(amount: number, orderId: string, currency: string = 
       },
     ],
     mode: 'payment',
-    success_url: `${frontendUrl}/#/payment-success`,
+    success_url: `${frontendUrl}/#/payment-success?orderId=${orderId}`,
     cancel_url:  `${frontendUrl}/#/payment-cancel`,
     metadata: { orderId },
   });

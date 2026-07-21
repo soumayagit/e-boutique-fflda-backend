@@ -62,7 +62,7 @@ function bootstrap() {
                     }));
                     app.enableCors({
                         origin: [
-                            'https://boutique-fflda.fr',
+                            'https://api.boutique-fflda.fr',
                             'http://localhost:3000',
                         ],
                         credentials: true,
@@ -78,7 +78,7 @@ function bootstrap() {
                     return [4 /*yield*/, app.listen((_a = process.env.PORT) !== null && _a !== void 0 ? _a : 3000, '0.0.0.0')];
                 case 2:
                     _b.sent();
-                    console.log('API running on https://boutique-fflda.fr/api/v1');
+                    console.log('API running on https://api.boutique-fflda.fr/api/v1');
                     console.log('Swagger : http://localhost:3000/docs');
                     setInterval(function () {
                         console.log('💓 keep-alive ping');

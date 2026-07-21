@@ -55,7 +55,7 @@ export class UploadController {
   )
   uploadFile(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('Aucun fichier reçu');
-    const url = `https://boutique-fflda.fr/uploads/${file.filename}`;
+    const url = `https://api.boutique-fflda.fr/uploads/${file.filename}`;
     return { url };
   }
 }

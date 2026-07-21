@@ -27,7 +27,7 @@ let UploadController = class UploadController {
     uploadFile(file) {
         if (!file)
             throw new common_1.BadRequestException('Aucun fichier reçu');
-        const url = `https://boutique-fflda.fr/uploads/${file.filename}`;
+        const url = `https://api.boutique-fflda.fr/uploads/${file.filename}`;
         return { url };
     }
 };

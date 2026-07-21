@@ -63,7 +63,7 @@ var UploadController = function () {
         UploadController_1.prototype.uploadFile = function (file) {
             if (!file)
                 throw new common_1.BadRequestException('Aucun fichier reçu');
-            var url = "https://boutique-fflda.fr/uploads/".concat(file.filename);
+            var url = "https://api.boutique-fflda.fr/uploads/".concat(file.filename);
             return { url: url };
         };
         return UploadController_1;
