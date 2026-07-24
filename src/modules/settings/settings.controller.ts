@@ -51,17 +51,22 @@ export class SettingsController {
         },
       }),
       limits: { fileSize: MAX_VIDEO_SIZE },
-      fileFilter: (_req, file, cb) => {
-        if (!ALLOWED_VIDEO_MIME.includes(file.mimetype)) {
-          return cb(
-            new BadRequestException(
-              'Format vidéo non autorisé (mp4, webm, mov uniquement)',
-            ),
-            false,
-          );
-        }
-        cb(null, true);
-      },
+     fileFilter: (_req, file, cb) => {
+  const ext = extname(file.originalname).toLowerCase();
+  const allowedExt = ['.mp4', '.webm', '.mov'];
+  const mimeOk = ALLOWED_VIDEO_MIME.includes(file.mimetype);
+  const extOk  = allowedExt.includes(ext);
+
+  if (!mimeOk && !extOk) {
+    return cb(
+      new BadRequestException(
+        'Format vidéo non autorisé (mp4, webm, mov uniquement)',
+      ),
+      false,
+    );
+  }
+  cb(null, true);
+},
     }),
   )
   async uploadHeroVideo(@UploadedFile() file: Express.Multer.File) {
