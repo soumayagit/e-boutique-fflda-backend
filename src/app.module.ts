@@ -15,6 +15,7 @@ import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { PromoModule } from './modules/promo/promo.module'; 
 import { PaymentModule } from './modules/payment/payment.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { UploadModule } from './modules/upload/upload.module';
     PaymentModule, 
     PromoModule, 
     UploadModule,
+    SettingsModule,
 
   ],
   providers: [

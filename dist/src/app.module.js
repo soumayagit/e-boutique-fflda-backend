@@ -24,6 +24,7 @@ const wishlist_module_1 = require("./modules/wishlist/wishlist.module");
 const promo_module_1 = require("./modules/promo/promo.module");
 const payment_module_1 = require("./modules/payment/payment.module");
 const upload_module_1 = require("./modules/upload/upload.module");
+const settings_module_1 = require("./modules/settings/settings.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -43,6 +44,7 @@ exports.AppModule = AppModule = __decorate([
             payment_module_1.PaymentModule,
             promo_module_1.PromoModule,
             upload_module_1.UploadModule,
+            settings_module_1.SettingsModule,
         ],
         providers: [
             { provide: core_1.APP_GUARD, useClass: jwt_auth_guard_1.JwtAuthGuard },

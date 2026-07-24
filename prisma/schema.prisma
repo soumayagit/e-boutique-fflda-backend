@@ -272,3 +272,10 @@ model Invoice {
 
   @@map("invoices")
 }
+model SiteSettings {
+  id           String   @id @default("main") // singleton : une seule ligne
+  heroVideoUrl String?  @map("hero_video_url")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}
